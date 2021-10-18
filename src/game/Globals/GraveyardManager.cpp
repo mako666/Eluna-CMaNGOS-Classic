@@ -68,7 +68,7 @@ WorldSafeLocsEntry const* GraveyardManager::GetClosestGraveyardHelper(GraveYardM
         if (mapId != entry->map_id)
         {
             // if find graveyard at different map from where entrance placed (or no entrance data), use any first
-            if (!mapEntry ||
+            if (!mapEntry || !tempEntry ||
                 tempEntry->ghost_entrance_map < 0 ||
                 uint32(tempEntry->ghost_entrance_map) != entry->map_id ||
                 (tempEntry->ghost_entrance_x == 0 && tempEntry->ghost_entrance_y == 0))
