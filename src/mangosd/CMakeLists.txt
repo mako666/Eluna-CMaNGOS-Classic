@@ -41,6 +41,10 @@ if(WIN32)
   set(EXECUTABLE_SRCS ${EXECUTABLE_SRCS} mangosd.rc)
 endif()
 
+include_directories(
+  ${CMAKE_SOURCE_DIR}/dep/lualib
+)
+
 add_executable(${EXECUTABLE_NAME}
   ${EXECUTABLE_SRCS}
 )
@@ -77,6 +81,14 @@ if(WIN32)
   add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/game/Anticheat/module/warden_modules/ $<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/warden_modules
     DEPENDS ${EXECUTABLE_NAME})
+  if(BUILD_ELUNA)
+    add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/game/LuaEngine/extensions/ $<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/lua_scripts/extensions
+      DEPENDS ${EXECUTABLE_NAME})
+
+    add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${CMAKE_SOURCE_DIR}/contrib/lua_scripts/masterscript.lua\" \"$<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/lua_scripts/masterscript.lua\")
+  endif()
 endif()
 
 set(EXECUTABLE_LINK_FLAGS "")
@@ -103,6 +115,13 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/mangosd.conf.dist DESTINATION ${CONF_D
 # Define BUILD_PLAYERBOT if need
 if (BUILD_PLAYERBOT)
   add_definitions(-DBUILD_PLAYERBOT)
+endif()
+
+# Define BUILD_ELUNA if needed
+if (BUILD_ELUNA)
+  add_definitions(-DBUILD_ELUNA -DCLASSIC -DCMANGOS)
+  install(FILES ${CMAKE_SOURCE_DIR}/contrib/lua_scripts/masterscript.lua DESTINATION ${BIN_DIR}/lua_scripts)
+  install(DIRECTORY ${CMAKE_SOURCE_DIR}/src/game/LuaEngine/extensions DESTINATION ${BIN_DIR}/lua_scripts)
 endif()
 
 if(MSVC)
