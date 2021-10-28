@@ -1442,8 +1442,18 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 }
                 return;
             }
-            case 12479:                                     // Hex of Jammal'an
-                target->CastSpell(target, 12480, TRIGGERED_OLD_TRIGGERED, nullptr, this);
+            case 11129:                                     // Combustion
+                target->RemoveAurasDueToSpell(28682); // on Combustion removal remove crit % stacks
+                return;
+            case 11826:                                     // Electromagnetic Gigaflux Reactivator
+                if (m_removeMode != AURA_REMOVE_BY_EXPIRE)
+                    return;
+
+                if (Unit* caster = GetCaster())
+                {
+                    if (caster->GetTypeId() == TYPEID_PLAYER)
+                        caster->CastSpell(target, 11828, TRIGGERED_OLD_TRIGGERED, ((Player*)caster)->GetItemByGuid(this->GetCastItemGuid()), this);
+                }
                 return;
             case 12774:                                     // (DND) Belnistrasz Idol Shutdown Visual
             {
@@ -2123,7 +2133,8 @@ void Aura::HandleAuraTransform(bool apply, bool /*Real*/)
                     break;
                 }
                 default:
-                    sLog.outError("Aura::HandleAuraTransform, spell %u does not have creature entry defined, need custom defined model.", GetId());
+                    if (!m_modifier.m_amount) // can be set through script
+                        sLog.outError("Aura::HandleAuraTransform, spell %u does not have creature entry defined, need custom defined model.", GetId());
                     break;
             }
         }
@@ -2352,19 +2363,12 @@ void Aura::HandleModPossess(bool apply, bool Real)
 
         if (Player* playerCaster = caster->IsPlayer() ? static_cast<Player*>(caster) : nullptr)
         {
-            UpdateMask updateMask;
-            updateMask.SetCount(target->GetValuesCount());
-            target->MarkUpdateFieldsWithFlagForUpdate(updateMask, UF_FLAG_OWNER_ONLY);
-            if (updateMask.HasData())
+            UpdateData newData;
+            target->BuildValuesUpdateBlockForPlayerWithFlags(newData, playerCaster, UF_FLAG_OWNER_ONLY);
+            if (newData.HasData())
             {
-                UpdateData newData;
-                target->BuildValuesUpdateBlockForPlayer(newData, updateMask, playerCaster);
-
-                if (newData.HasData())
-                {
-                    WorldPacket newDataPacket = newData.BuildPacket(0, false);
-                    playerCaster->SendDirectMessage(newDataPacket);
-                }
+                WorldPacket newDataPacket = newData.BuildPacket(0, false);
+                playerCaster->SendDirectMessage(newDataPacket);
             }
         }
     }
@@ -4522,20 +4526,9 @@ void Aura::HandleAuraEmpathy(bool apply, bool /*Real*/)
         {
             if (Player* playerCaster = caster->IsPlayer() ? static_cast<Player*>(caster) : nullptr)
             {
-                UpdateMask updateMask;
-                updateMask.SetCount(target->GetValuesCount());
-                updateMask.SetBit(UNIT_FIELD_HEALTH);
-                updateMask.SetBit(UNIT_FIELD_MAXHEALTH);
-                target->MarkUpdateFieldsWithFlagForUpdate(updateMask, UF_FLAG_SPECIAL_INFO);
-
-                UpdateData newData;
-                target->BuildValuesUpdateBlockForPlayer(newData, updateMask, playerCaster);
-
-                if (newData.HasData())
-                {
-                    WorldPacket newDataPacket = newData.BuildPacket(0, false);
-                    playerCaster->SendDirectMessage(newDataPacket);
-                }
+                UpdateData updateData;
+                target->BuildValuesUpdateBlockForPlayerWithFlags(updateData, playerCaster, UpdateFieldFlags(UF_FLAG_SPECIAL_INFO | UF_FLAG_DYNAMIC));
+                updateData.SendData(*playerCaster->GetSession());
             }
         }
     }
@@ -5494,6 +5487,9 @@ void SpellAuraHolder::_AddSpellAuraHolder()
     if (m_spellProto->AuraInterruptFlags & AURA_INTERRUPT_FLAG_NOT_SEATED && !m_target->IsSitState())
         m_target->SetStandState(UNIT_STAND_STATE_SIT);
 
+    if (m_spellProto->HasAttribute(SPELL_ATTR_EX_PREVENTS_ANIM))
+        m_target->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PREVENT_ANIM);
+
     // register aura diminishing on apply
     if (getDiminishGroup() != DIMINISHING_NONE)
         m_target->ApplyDiminishingAura(getDiminishGroup(), true);
@@ -5564,23 +5560,24 @@ void SpellAuraHolder::_RemoveSpellAuraHolder()
 
         // Remove state (but need check other auras for it)
         if (removeState)
-        {
-            bool found = false;
-            Unit::SpellAuraHolderMap const& holders = m_target->GetSpellAuraHolderMap();
-            for (const auto& holder : holders)
-            {
-                SpellEntry const* auraSpellInfo = holder.second->GetSpellProto();
-                if (auraSpellInfo->IsFitToFamily(SpellFamily(m_spellProto->SpellFamilyName), removeFamilyFlag))
-                {
-                    found = true;
-                    break;
-                }
-            }
-
             // this has been last aura
-            if (!found)
+            if (!m_target->HasAuraWithCondition([spellProto = m_spellProto, removeFamilyFlag](SpellAuraHolder* holder)
+            {
+                SpellEntry const* auraSpellInfo = holder->GetSpellProto();
+                if (auraSpellInfo->IsFitToFamily(SpellFamily(spellProto->SpellFamilyName), removeFamilyFlag))
+                    return true;
+                return false;
+            }))
                 m_target->ModifyAuraState(AuraState(removeState), false);
-        }
+
+        if (m_spellProto->HasAttribute(SPELL_ATTR_EX_PREVENTS_ANIM))
+            if (!m_target->HasAuraWithCondition([](SpellAuraHolder* holder)
+            {
+                if (holder->GetSpellProto()->HasAttribute(SPELL_ATTR_EX_PREVENTS_ANIM))
+                    return true;
+                return false;
+            }))
+                m_target->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PREVENT_ANIM);
 
         // reset cooldown state for spells
         if (caster && GetSpellProto()->HasAttribute(SPELL_ATTR_DISABLED_WHILE_ACTIVE))
@@ -5652,7 +5649,7 @@ void SpellAuraHolder::SetStackAmount(uint32 stackAmount, Unit* newCaster)
     {
         // Change caster
         Unit* oldCaster = GetCaster();
-        if (oldCaster != newCaster)
+        if (newCaster && oldCaster != newCaster)
         {
             m_casterGuid = newCaster->GetObjectGuid();
             // New caster duration sent for owner in RefreshHolder

@@ -643,9 +643,6 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
 void WorldSession::HandleEmoteOpcode(WorldPacket& recv_data)
 {
-    if (!GetPlayer()->IsAlive() || GetPlayer()->IsFeigningDeath())
-        return;
-
     uint32 emote;
     recv_data >> emote;
 #ifdef BUILD_ELUNA
@@ -653,10 +650,14 @@ void WorldSession::HandleEmoteOpcode(WorldPacket& recv_data)
     sEluna->OnEmote(GetPlayer(), emote);
 #endif
 
+    if (!GetPlayer()->IsAlive() || GetPlayer()->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PREVENT_ANIM))
+        return;
+
     // restrict to the only emotes hardcoded in client
     if (emote != EMOTE_ONESHOT_NONE && emote != EMOTE_ONESHOT_WAVE)
         return;
 
+    GetPlayer()->InterruptSpellsAndAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ANIM_CANCELS);
     GetPlayer()->HandleEmoteCommand(emote);
 }
 
@@ -694,7 +695,19 @@ namespace MaNGOS
 
 void WorldSession::HandleTextEmoteOpcode(WorldPacket& recv_data)
 {
-    if (!GetPlayer()->IsAlive())
+    uint32 text_emote, emoteNum;
+    ObjectGuid guid;
+
+    recv_data >> text_emote;
+    recv_data >> emoteNum;
+    recv_data >> guid;
+	
+#ifdef BUILD_ELUNA
+    // used by eluna
+    sEluna->OnTextEmote(GetPlayer(), text_emote, emoteNum, guid);
+#endif
+
+    if (!GetPlayer()->IsAlive() || GetPlayer()->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PREVENT_ANIM))
         return;
 
     if (!GetPlayer()->CanSpeak())
@@ -703,18 +716,6 @@ void WorldSession::HandleTextEmoteOpcode(WorldPacket& recv_data)
         SendNotification(GetMangosString(LANG_WAIT_BEFORE_SPEAKING), timeStr.c_str());
         return;
     }
-
-    uint32 text_emote, emoteNum;
-    ObjectGuid guid;
-
-    recv_data >> text_emote;
-    recv_data >> emoteNum;
-    recv_data >> guid;
-
-#ifdef BUILD_ELUNA
-    // used by eluna
-    sEluna->OnTextEmote(GetPlayer(), text_emote, emoteNum, guid);
-#endif
 
     EmotesTextEntry const* em = sEmotesTextStore.LookupEntry(text_emote);
     if (!em)
@@ -731,10 +732,7 @@ void WorldSession::HandleTextEmoteOpcode(WorldPacket& recv_data)
             break;
         default:
         {
-            // in feign death state allowed only text emotes.
-            if (GetPlayer()->IsFeigningDeath())
-                break;
-
+            GetPlayer()->InterruptSpellsAndAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ANIM_CANCELS);
             GetPlayer()->HandleEmoteCommand(emote_id);
             break;
         }
