@@ -24,6 +24,7 @@
 #include "Globals/SharedDefines.h"
 #include "Server/DBCEnums.h"
 #include "Util.h"
+#include "Entities/CreatureSpellList.h"
 
 #include <list>
 #include <memory>
@@ -154,6 +155,7 @@ struct CreatureInfo
     uint32  GossipMenuId;
     VisibilityDistanceType visibilityDistanceType;
     uint32  CorpseDelay;
+    uint32  SpellList;
     uint32  EquipmentTemplateId;
     uint32  Civilian;
     char const* AIName;
@@ -181,13 +183,6 @@ struct CreatureInfo
     {
         return CreatureType == CREATURE_TYPE_BEAST && Family != 0 && (CreatureTypeFlags & CREATURE_TYPEFLAGS_TAMEABLE);
     }
-};
-
-struct CreatureTemplateSpells
-{
-    uint32 entry;
-    uint32 setId;
-    uint32 spells[CREATURE_MAX_SPELLS];
 };
 
 struct CreatureCooldowns
@@ -665,8 +660,8 @@ class Creature : public Unit
         uint32 GetCreatureSpellCooldownDelay(uint32 spellId) const;
 
         bool HasSpell(uint32 spellID) const override;
-        void UpdateSpell(int32 index, int32 newSpellId) { m_spells[index] = newSpellId; }
-        void UpdateSpellSet(uint32 spellSet);
+        void UpdateSpell(int32 index, int32 newSpellId);
+        void SetSpellList(uint32 spellSet);
         void UpdateImmunitiesSet(uint32 immunitySet);
 
         bool UpdateEntry(uint32 Entry, const CreatureData* data = nullptr, GameEventCreatureData const* eventData = nullptr, bool preserveHPAndPower = true);
@@ -735,7 +730,7 @@ class Creature : public Unit
         SpellEntry const* ReachWithSpellAttack(Unit* pVictim);
         SpellEntry const* ReachWithSpellCure(Unit* pVictim);
 
-        uint32 m_spells[CREATURE_MAX_SPELLS];
+
         CreatureSpellCooldowns m_CreatureSpellCooldowns;
         CreatureSpellCooldowns m_CreatureCategoryCooldowns;
 
@@ -865,6 +860,11 @@ class Creature : public Unit
         uint32 GetDbGuid() const override { return m_dbGuid; }
         HighGuid GetParentHigh() const override { return HIGHGUID_UNIT; }
 
+        // Spell Lists
+        CreatureSpellList const& GetSpellList() const { return m_spellList; }
+        std::vector<uint32> GetCharmSpells() const;
+        bool GetSpellCooldown(uint32 spellId, uint32& cooldown) const;
+
     protected:
         bool CreateFromProto(uint32 guidlow, CreatureInfo const* cinfo, const CreatureData* data = nullptr, GameEventCreatureData const* eventData = nullptr);
         bool InitEntry(uint32 Entry, const CreatureData* data = nullptr, GameEventCreatureData const* eventData = nullptr);
@@ -934,6 +934,9 @@ class Creature : public Unit
 
         // spell scripting persistency
         std::set<uint32> m_hitBySpells;
+
+        // Spell Lists
+        CreatureSpellList m_spellList;
 
     private:
         GridReference<Creature> m_gridRef;
