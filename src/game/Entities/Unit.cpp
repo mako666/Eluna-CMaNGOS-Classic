@@ -557,6 +557,9 @@ void Unit::TriggerAggroLinkingEvent(Unit* enemy)
 {
     if (IsLinkingEventTrigger())
         GetMap()->GetCreatureLinkingHolder()->DoCreatureLinkingEvent(LINKING_EVENT_AGGRO, static_cast<Creature*>(this), enemy);
+
+    if (IsCreature() && static_cast<Creature*>(this)->GetCreatureGroup())
+        static_cast<Creature*>(this)->GetCreatureGroup()->TriggerLinkingEvent(CREATURE_GROUP_EVENT_AGGRO, enemy);
 }
 
 void Unit::TriggerEvadeEvents()
@@ -569,7 +572,18 @@ void Unit::TriggerEvadeEvents()
     if (m_isCreatureLinkingTrigger)
         GetMap()->GetCreatureLinkingHolder()->DoCreatureLinkingEvent(LINKING_EVENT_EVADE, static_cast<Creature*>(this));
 
+    if (IsCreature() && static_cast<Creature*>(this)->GetCreatureGroup())
+        static_cast<Creature*>(this)->GetCreatureGroup()->TriggerLinkingEvent(CREATURE_GROUP_EVENT_EVADE, this);
+
     CallForAllControlledUnits([](Unit* unit) { unit->HandleExitCombat(false); }, CONTROLLED_PET | CONTROLLED_GUARDIANS | CONTROLLED_CHARM | CONTROLLED_TOTEMS);
+}
+
+void Unit::TriggerHomeEvents()
+{
+    AI()->JustReachedHome();
+
+    if (IsCreature() && static_cast<Creature*>(this)->GetCreatureGroup())
+        static_cast<Creature*>(this)->GetCreatureGroup()->TriggerLinkingEvent(CREATURE_GROUP_EVENT_HOME, this);
 }
 
 void Unit::EvadeTimerExpired()
@@ -1009,7 +1023,7 @@ void Unit::Kill(Unit* killer, Unit* victim, DamageEffectType damagetype, SpellEn
             data << victim->GetObjectGuid();                // victim
 
             if (tapperGroup)
-                tapperGroup->BroadcastPacket(data, false, tapperGroup->GetMemberGroup(responsiblePlayer->GetObjectGuid()), responsiblePlayer->GetObjectGuid());
+                tapperGroup->BroadcastPacketInRange(victim, data, false, tapperGroup->GetMemberGroup(responsiblePlayer->GetObjectGuid()));
 
             responsiblePlayer->SendDirectMessage(data);
         }
@@ -3933,7 +3947,7 @@ void Unit::_UpdateSpells(uint32 time)
     std::string logging;
     for (uint32 spellId : updatedSpellIds)
         logging += std::to_string(spellId) + ",";
-    meas.add_field("spells", logging);
+    meas.add_field("spells", "\"" + logging + "\"");
 #endif
 }
 
@@ -8778,7 +8792,7 @@ bool Unit::SelectHostileTarget()
         {
             if (!GetMotionMaster()->GetCurrent()->IsReachable())
             {
-                if (!AI()->IsRangedUnit() && getThreatManager().getThreatList().size() == 1 &&
+                if (!AI()->IsRangedUnit() && getThreatManager().getThreatList().size() == 1 && target->IsFlying() &&
                     GetDistanceZ(target) > CREATURE_Z_ATTACK_RANGE_MELEE)
                 {
                     getThreatManager().modifyThreatPercent(target, -101);

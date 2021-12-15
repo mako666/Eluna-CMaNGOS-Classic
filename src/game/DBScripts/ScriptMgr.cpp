@@ -233,6 +233,15 @@ void ScriptMgr::LoadScripts(ScriptMapMapName& scripts, const char* tablename)
                     }
                 }
             }
+            else if (tmp.data_flags & SCRIPT_FLAG_BUDDY_BY_SPAWN_GROUP)
+            {
+                uint32 groupEntry = tmp.searchRadiusOrGuid;
+                if (sObjectMgr.GetSpawnGroupContainer()->spawnGroupMap.find(groupEntry) == sObjectMgr.GetSpawnGroupContainer()->spawnGroupMap.end())
+                {
+                    sLog.outErrorDb("Table `%s` has go-buddy defined by group (SCRIPT_FLAG_BUDDY_BY_SPAWN_GROUP %u set) but group %u is empty, skipping.", tablename, tmp.data_flags, tmp.searchRadiusOrGuid);
+                    continue;
+                }
+            }
         }
 
         switch (tmp.command)
@@ -1127,9 +1136,9 @@ bool ScriptAction::GetScriptProcessTargets(WorldObject* originalSource, WorldObj
 {
     std::vector<WorldObject*> buddies;
 
-    if (m_script->buddyEntry || (m_script->data_flags & SCRIPT_FLAG_BUDDY_BY_POOL) != 0 || (m_script->data_flags & SCRIPT_FLAG_BUDDY_BY_GUID) != 0)
+    if (m_script->buddyEntry || (m_script->data_flags & SCRIPT_FLAG_BUDDY_BY_POOL) != 0 || (m_script->data_flags & (SCRIPT_FLAG_BUDDY_BY_GUID)) != 0)
     {
-        if (m_script->data_flags & SCRIPT_FLAG_BUDDY_BY_GUID)
+        if (m_script->data_flags & (SCRIPT_FLAG_BUDDY_BY_GUID))
         {
             WorldObject* buddy = nullptr;
             if (m_script->IsCreatureBuddy())
@@ -1205,6 +1214,57 @@ bool ScriptAction::GetScriptProcessTargets(WorldObject* originalSource, WorldObj
             }
             // this type can only have one buddy result
             buddies.push_back(buddy);
+        }
+        else if (m_script->data_flags & SCRIPT_FLAG_BUDDY_BY_SPAWN_GROUP) // Buddy by group
+        {
+            WorldObject* origin = originalSource ? originalSource : originalTarget;
+            if (origin->GetTypeId() == TYPEID_PLAYER && originalSource && originalSource->GetTypeId() != TYPEID_PLAYER)
+                origin = originalTarget;
+
+            SpawnGroupEntry* entry = m_map->GetMapDataContainer().GetSpawnGroup(m_script->searchRadiusOrGuid);
+            WorldObject* closest = nullptr;
+            if (entry->Type == SPAWN_GROUP_CREATURE)
+            {
+                for (auto& dbGuid : entry->DbGuids)
+                {
+                    if (Creature* creature = m_map->GetCreature(dbGuid.DbGuid))
+                    {
+                        if ((m_script->data_flags & SCRIPT_FLAG_ALL_ELIGIBLE_BUDDIES) != 0)
+                            buddies.push_back(creature);
+                        else
+                        {
+                            if (!closest)
+                                closest = creature;
+                            else if (origin->GetDistance(creature) < origin->GetDistance(closest))
+                                closest = creature;
+                        }
+                    }
+                }
+
+                if ((m_script->data_flags & SCRIPT_FLAG_ALL_ELIGIBLE_BUDDIES) == 0 && closest)
+                    buddies.push_back(closest);
+            }
+            else
+            {
+                for (auto& dbGuid : entry->DbGuids)
+                {
+                    if (GameObject* go = m_map->GetGameObject(dbGuid.DbGuid))
+                    {
+                        if ((m_script->data_flags & SCRIPT_FLAG_ALL_ELIGIBLE_BUDDIES) != 0)
+                            buddies.push_back(go);
+                        else
+                        {
+                            if (!closest)
+                                closest = go;
+                            else if (origin->GetDistance(go) < origin->GetDistance(closest))
+                                closest = go;
+                        }
+                    }
+                }
+
+                if ((m_script->data_flags & SCRIPT_FLAG_ALL_ELIGIBLE_BUDDIES) == 0 && closest)
+                    buddies.push_back(closest);
+            }
         }
         else                                                // Buddy by entry
         {
@@ -1701,11 +1761,11 @@ bool ScriptAction::ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTa
             float z = m_script->z;
             float o = m_script->o;
             bool run = m_script->textId[0] == 1;
-            uint32 factionId = m_script->textId[1];
-            uint32 modelId = m_script->textId[2];
+            uint32 relayId = m_script->textId[1];
 
-            TempSpawnSettings settings(pSource, m_script->summonCreature.creatureEntry, x, y, z, o, m_script->summonCreature.despawnDelay ? TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN : TEMPSPAWN_DEAD_DESPAWN, m_script->summonCreature.despawnDelay, (m_script->data_flags& SCRIPT_FLAG_COMMAND_ADDITIONAL) != 0, run, m_script->summonCreature.pathId, factionId, modelId);
+            TempSpawnSettings settings(pSource, m_script->summonCreature.creatureEntry, x, y, z, o, m_script->summonCreature.despawnDelay ? TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN : TEMPSPAWN_DEAD_DESPAWN, m_script->summonCreature.despawnDelay, (m_script->data_flags& SCRIPT_FLAG_COMMAND_ADDITIONAL) != 0, run, m_script->summonCreature.pathId);
             settings.spawnDataEntry = m_script->textId[3];
+            settings.dbscriptTarget = pTarget;
 
             Creature* pCreature = WorldObject::SummonCreature(settings, pSource->GetMap());
             if (!pCreature)
@@ -1713,7 +1773,6 @@ bool ScriptAction::ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTa
                 sLog.outErrorDb(" DB-SCRIPTS: Process table `%s` id %u, command %u failed for creature (entry: %u).", m_table, m_script->id, m_script->command, m_script->summonCreature.creatureEntry);
                 break;
             }
-
             break;
         }
         case SCRIPT_COMMAND_OPEN_DOOR:                      // 11
@@ -2134,16 +2193,16 @@ bool ScriptAction::ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTa
         }
         case SCRIPT_COMMAND_TERMINATE_SCRIPT:               // 31
         {
-            if (!pSource && (!pTarget && (m_script->data_flags & SCRIPT_FLAG_BUDDY_BY_GUID) == 0))
+            if (!pSource && (!pTarget && ((m_script->data_flags & SCRIPT_FLAG_BUDDY_BY_GUID) == 0)))
             {
                 sLog.outErrorDb(" DB-SCRIPTS: Process table `%s` id %u, command %u call for nullptr, skipping.", m_table, m_script->id, m_script->command);
                 return true;
             }
 
             bool result = false;
-            if (m_script->terminateScript.npcEntry || m_script->terminateScript.poolId || (m_script->data_flags & SCRIPT_FLAG_BUDDY_BY_GUID))
+            if (m_script->terminateScript.npcEntry || m_script->terminateScript.poolId || (m_script->data_flags & (SCRIPT_FLAG_BUDDY_BY_GUID)))
             {
-                Creature* pCreatureBuddy = nullptr;
+                WorldObject* terminationBuddy = nullptr;
                 WorldObject* pSearcher = pSource ? pSource : pTarget;
                 if (!pSearcher)
                 {
@@ -2154,17 +2213,38 @@ bool ScriptAction::ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTa
                 if (pSearcher->GetTypeId() == TYPEID_PLAYER && pTarget && pTarget->GetTypeId() != TYPEID_PLAYER)
                     pSearcher = pTarget;
 
-                if (m_script->data_flags & SCRIPT_FLAG_BUDDY_BY_GUID)
+                if (m_script->data_flags & (SCRIPT_FLAG_BUDDY_BY_GUID))
                 {
-                    if (pTarget && pTarget->IsUnit() && pTarget->GetGUIDLow() == m_script->searchRadiusOrGuid)
-                        pCreatureBuddy = static_cast<Creature*>(pTarget);
+                    if (m_script->IsCreatureBuddy())
+                    {
+                        if (pTarget && pTarget->IsUnit() && pTarget->GetGUIDLow() == m_script->searchRadiusOrGuid)
+                            terminationBuddy = pTarget;
+                    }
+                    else
+                    {
+                        if (pTarget && pTarget->IsGameObject() && pTarget->GetGUIDLow() == m_script->searchRadiusOrGuid)
+                            terminationBuddy = pTarget;
+                    }
                 }
                 else if (m_script->terminateScript.npcEntry)
                 {
-                    // npc entry is provided
-                    MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck u_check(*pSearcher, m_script->terminateScript.npcEntry, true, false, m_script->terminateScript.searchDist, true);
-                    MaNGOS::CreatureLastSearcher<MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck> searcher(pCreatureBuddy, u_check);
-                    Cell::VisitGridObjects(pSearcher, searcher, m_script->terminateScript.searchDist);
+                    if (m_script->IsCreatureBuddy())
+                    {
+                        // npc entry is provided
+                        Creature* creatureBuddy = nullptr;
+                        MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck u_check(*pSearcher, m_script->terminateScript.npcEntry, true, false, m_script->terminateScript.searchDist, true);
+                        MaNGOS::CreatureLastSearcher<MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck> searcher(creatureBuddy, u_check);
+                        Cell::VisitGridObjects(pSearcher, searcher, m_script->terminateScript.searchDist);
+                        terminationBuddy = creatureBuddy;
+                    }
+                    else
+                    {
+                        GameObject* goBuddy = nullptr;
+                        MaNGOS::NearestGameObjectEntryInObjectRangeCheck u_check(*pSearcher, m_script->terminateScript.npcEntry, m_script->terminateScript.searchDist);
+                        MaNGOS::GameObjectLastSearcher<MaNGOS::NearestGameObjectEntryInObjectRangeCheck> searcher(goBuddy, u_check);
+                        Cell::VisitGridObjects(pSearcher, searcher, m_script->terminateScript.searchDist);
+                        terminationBuddy = goBuddy;
+                    }
                 }
                 else
                 {
@@ -2183,13 +2263,13 @@ bool ScriptAction::ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTa
                             if (buddy->IsAlive() &&
                                 (!m_script->terminateScript.searchDist || pSearcher->IsWithinDist3d(buddy->GetPositionX(), buddy->GetPositionY(), buddy->GetPositionZ(), m_script->terminateScript.searchDist)))
                             {
-                                pCreatureBuddy = buddy;
+                                terminationBuddy = buddy;
                                 break;
                             }
                         }
                     }
 
-                    if (!pCreatureBuddy)
+                    if (!terminationBuddy)
                     {
                         // buddy was not found so try explicitly chanced list
                         auto explicitlyChancedObjectList = pool.GetExplicitlyChanced();
@@ -2202,7 +2282,7 @@ bool ScriptAction::ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTa
                                 if (buddy->IsAlive() &&
                                     (!m_script->terminateScript.searchDist || pSearcher->IsWithinDist3d(buddy->GetPositionX(), buddy->GetPositionY(), buddy->GetPositionZ(), m_script->terminateScript.searchDist)))
                                 {
-                                    pCreatureBuddy = buddy;
+                                    terminationBuddy = buddy;
                                     break;
                                 }
                             }
@@ -2210,7 +2290,7 @@ bool ScriptAction::ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTa
                     }
                 }
 
-                if (!(m_script->data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL) && !pCreatureBuddy)
+                if (!(m_script->data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL) && !terminationBuddy)
                 {
                     if (m_script->terminateScript.npcEntry)
                         DETAIL_FILTER_LOG(LOG_FILTER_DB_SCRIPT, "DB-SCRIPTS: Process table `%s` id %u, terminate further steps of this script! (as searched npc entry(%u) was not found alive)", m_table, m_script->id, m_script->terminateScript.npcEntry);
@@ -2218,7 +2298,7 @@ bool ScriptAction::ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTa
                         DETAIL_FILTER_LOG(LOG_FILTER_DB_SCRIPT, "DB-SCRIPTS: Process table `%s` id %u, terminate further steps of this script! (as no npc in pool id(%u) was found alive)", m_table, m_script->id, m_script->terminateScript.poolId);
                     result = true;
                 }
-                else if (m_script->data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL && pCreatureBuddy)
+                else if (m_script->data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL && terminationBuddy)
                 {
                     if (m_script->terminateScript.npcEntry)
                         DETAIL_FILTER_LOG(LOG_FILTER_DB_SCRIPT, "DB-SCRIPTS: Process table `%s` id %u, terminate further steps of this script! (as searched npc entry(%u) was found alive)", m_table, m_script->id, m_script->terminateScript.npcEntry);
@@ -2338,10 +2418,13 @@ bool ScriptAction::ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTa
         {
             if (LogIfNotCreature(pSource))
                 return false;
-            if (LogIfNotUnit(pTarget))
+            if (!pTarget)
+            {
+                sLog.outDebug(" DB-SCRIPTS: Process table `%s` id %u, SCRIPT_COMMAND_MOVE_DYNAMIC called but target doesnt exist: skipping.", m_table, m_script->id);
                 return false;
+            }
 
-            Creature* source = ((Creature*)pSource);
+            Creature* source = static_cast<Creature*>(pSource);
             if (source->IsInCombat())
             {
                 sLog.outDebug(" DB-SCRIPTS: Process table `%s` id %u, SCRIPT_COMMAND_MOVE_DYNAMIC called for source guid %s but source is in combat and may lead to wrong behaviour: skipping.", m_table, m_script->id, pSource->GetGuidStr().c_str());
@@ -2351,27 +2434,27 @@ bool ScriptAction::ExecuteDbscriptCommand(WorldObject* pSource, WorldObject* pTa
             float x, y, z;
             if (m_script->moveDynamic.maxDist == 0)         // Move to pTarget
             {
-                if (pTarget == pSource)
+                if (pTarget == source)
                 {
-                    sLog.outErrorDb(" DB-SCRIPTS: Process table `%s` id %u, _MOVE_DYNAMIC called with maxDist == 0, but resultingSource == resultingTarget (== %s)", m_table, m_script->id, pSource->GetGuidStr().c_str());
+                    sLog.outErrorDb(" DB-SCRIPTS: Process table `%s` id %u, _MOVE_DYNAMIC called with maxDist == 0, but resultingSource == resultingTarget (== %s)", m_table, m_script->id, source->GetGuidStr().c_str());
                     break;
                 }
-                pTarget->GetContactPoint(pSource, x, y, z, m_script->moveDynamic.fixedDist);
+                pTarget->GetContactPoint(source, x, y, z, m_script->moveDynamic.fixedDist);
             }
             else                                            // Calculate position
             {
                 float orientation;
                 if (m_script->data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL)
-                    orientation = pSource->GetOrientation() + m_script->o + 2 * M_PI_F;
+                    orientation = source->GetOrientation() + m_script->o + 2 * M_PI_F;
                 else
                     orientation = m_script->o;
 
-                pSource->GetRandomPoint(pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), m_script->moveDynamic.maxDist, x, y, z,
+                source->GetRandomPoint(pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), m_script->moveDynamic.maxDist, x, y, z,
                                         m_script->moveDynamic.minDist, (orientation == 0.0f ? nullptr : &orientation));
                 z = std::max(z, pTarget->GetPositionZ());
-                pSource->UpdateAllowedPositionZ(x, y, z);
+                source->UpdateAllowedPositionZ(x, y, z);
             }
-            ((Creature*)pSource)->GetMotionMaster()->MovePoint(1, x, y, z);
+            source->GetMotionMaster()->MovePoint(1, Position(x, y, z, 0.f), ForcedMovement(m_script->textId[0]), 0.f, true, pTarget ? pTarget->GetObjectGuid() : ObjectGuid(), m_script->textId[1]);
             break;
         }
         case SCRIPT_COMMAND_SEND_MAIL:                      // 38

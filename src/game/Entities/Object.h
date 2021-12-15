@@ -686,6 +686,7 @@ struct TempSpawnSettings
     ObjectGuid ownerGuid;
     uint32 spawnDataEntry = 0;
     int32 movegen = -1;
+    WorldObject* dbscriptTarget = nullptr;
 
     // TemporarySpawnWaypoint subsystem
     bool tempSpawnMovegen = false;
@@ -1095,8 +1096,8 @@ class WorldObject : public Object
         Creature* SummonCreature(uint32 id, float x, float y, float z, float ang, TempSpawnType spwtype, uint32 despwtime, bool asActiveObject = false, bool setRun = false, uint32 pathId = 0, uint32 faction = 0, uint32 modelId = 0, bool spawnCounting = false, bool forcedOnTop = false);
 
         GameObject* SummonGameObject(uint32 id, float x, float y, float z, float angle, uint32 despwtime);
-        static GameObject* SpawnGameObject(uint32 dbGuid, Map* map);
-        static Creature* SpawnCreature(uint32 dbGuid, Map* map);
+        static GameObject* SpawnGameObject(uint32 dbGuid, Map* map, uint32 forcedEntry = 0);
+        static Creature* SpawnCreature(uint32 dbGuid, Map* map, uint32 forcedEntry = 0);
 
         bool isActiveObject() const { return m_isActiveObject || m_viewPoint.hasViewers(); }
         void SetActiveObjectState(bool active);

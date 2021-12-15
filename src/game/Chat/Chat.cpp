@@ -270,6 +270,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "spawn",          SEC_GAMEMASTER,     true,  nullptr,                                             "", debugSpawnsCommandtable },
         { "debugflags",     SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleDebugObjectFlags,                "", nullptr },
         { "packetlog",      SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleDebugPacketLog,                  "", nullptr },
+        { "dbscript",       SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleDebugDbscript,                   "", nullptr },
         { nullptr,          0,                  false, nullptr,                                             "", nullptr }
     };
 
@@ -633,6 +634,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "reputation_reward_rate",      SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadReputationRewardRateCommand,    "", nullptr },
         { "reputation_spillover_template", SEC_ADMINISTRATOR, true, &ChatHandler::HandleReloadReputationSpilloverTemplateCommand, "", nullptr },
         { "skill_fishing_base_level",    SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSkillFishingBaseLevelCommand,   "", nullptr },
+        { "spawn_group",                 SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpawnGroupsCommand,             "", nullptr },
         { "skinning_loot_template",      SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadLootTemplatesSkinningCommand,   "", nullptr },
         { "spam_records",                SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadExpectedSpamRecords,            "", nullptr },
         { "spell_affect",                SEC_ADMINISTRATOR, true,  &ChatHandler::HandleReloadSpellAffectCommand,             "", nullptr },
@@ -805,6 +807,7 @@ ChatCommand* ChatHandler::getCommandTable()
     static ChatCommand worldStateTable[] =
     {
         { "wareffort",      SEC_ADMINISTRATOR,  false, nullptr,                                        "", warEffortTable },
+        { "variables",      SEC_ADMINISTRATOR,  false, &ChatHandler::HandleVariablePrint,              "", nullptr },
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
 
