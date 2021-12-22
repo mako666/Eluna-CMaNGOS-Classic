@@ -24,6 +24,7 @@
 #include "Grids/CellImpl.h"
 #include "GameEvents/GameEventMgr.h"
 #include "Grids/GridNotifiers.h"
+#include "Grids/GridNotifiersImpl.h"
 
 inline uint32 GetCampType(Creature* unit) { return unit->HasAura(SPELL_CAMP_TYPE_GHOST_SKELETON) || unit->HasAura(SPELL_CAMP_TYPE_GHOST_GHOUL) || unit->HasAura(SPELL_CAMP_TYPE_GHOUL_SKELETON); };
 
