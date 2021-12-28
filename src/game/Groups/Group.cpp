@@ -144,7 +144,7 @@ bool Group::Create(ObjectGuid guid, const char* name)
 
     _updateLeaderFlag();
 #ifdef BUILD_ELUNA
-    sEluna->OnCreate(this, m_leaderGuid, m_groupType);
+    sEluna->OnCreate(this, m_leaderGuid, m_groupFlags);
 #endif
 
     return true;
