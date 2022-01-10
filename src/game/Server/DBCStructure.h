@@ -274,7 +274,7 @@ struct CreatureModelDataEntry
     //float Unk8
     //uint32 Unk9
     //uint32 Unk10
-    //float CollisionWidth;
+    float CollisionWidth;
     float CollisionHeight;
     //float MountHeight;                                       // Used in calculation of unit collision data when mounted - missing in classic - backport if needed from tbc
     //float Unks[7] wotlk has 11
@@ -430,6 +430,13 @@ struct FactionTemplateEntry
         return enemyGroupMask == 0 && friendGroupMask == 0;
     }
     bool IsContestedGuardFaction() const { return (factionFlags & FACTION_TEMPLATE_FLAG_ATTACK_PVP_ACTIVE_PLAYERS) != 0; }
+};
+
+struct GameObjectArtKitEntry
+{
+    uint32 ID;                                              // 0
+    //char* TextureVariation[3]                             // 1-3 m_textureVariations[3]
+    //char* AttachModel[4]                                  // 4-8 m_attachModels[4]
 };
 
 struct GameObjectDisplayInfoEntry
@@ -892,7 +899,7 @@ struct SpellItemEnchantmentEntry
     char*       description[8];                             // 13-20    m_name_lang[8]
     // 21 string flags
     uint32      aura_id;                                    // 22       m_itemVisual
-    uint32      slot;                                       // 23       m_flags
+    uint32      flags;                                      // 23       m_flags
 };
 
 struct StableSlotPricesEntry
