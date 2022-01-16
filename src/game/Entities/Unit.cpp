@@ -1168,8 +1168,7 @@ void Unit::HandleDamageDealt(Unit* dealer, Unit* victim, uint32& damage, CleanDa
 
     if (dealer)
     {
-        if (victim->CanAttack(dealer) && (!spellProto || (!spellProto->HasAttribute(SPELL_ATTR_EX2_NO_INITIAL_THREAT) &&
-            !spellProto->HasAttribute(SPELL_ATTR_EX_NO_THREAT))) && dealer->CanEnterCombat() && victim->CanEnterCombat())
+        if (victim->CanAttack(dealer) && (!spellProto || !spellProto->HasAttribute(SPELL_ATTR_EX_NO_THREAT)) && dealer->CanEnterCombat() && victim->CanEnterCombat())
         {
             float threat = damage * sSpellMgr.GetSpellThreatMultiplier(spellProto);
             victim->AddThreat(dealer, threat, (cleanDamage && cleanDamage->hitOutCome == MELEE_HIT_CRIT), damageSchoolMask, spellProto);
@@ -4271,16 +4270,23 @@ void Unit::SetFacingTo(float ori)
         transport->CalculatePassengerOrientation(ori);
     init.SetFacing(ori);
     init.Launch();
+    // orientation change is in-place
+    UpdateSplinePosition();
+    movespline->_Finalize();
 }
 
-void Unit::SetFacingToObject(WorldObject* pObject)
+void Unit::SetFacingToObject(WorldObject* object)
 {
     // never face when already moving
     if (!IsStopped())
         return;
 
-    // TODO: figure out under what conditions creature will move towards object instead of facing it where it currently is.
-    SetFacingTo(GetAngle(pObject));
+    Movement::MoveSplineInit init(*this);
+    init.SetFacing(object);
+    init.Launch();
+    // orientation change is in-place
+    UpdateSplinePosition();
+    movespline->_Finalize();
 }
 
 bool Unit::isInAccessablePlaceFor(Unit const* unit) const
@@ -10280,6 +10286,9 @@ void Unit::RestoreDisplayId()
     // transform aura was found
     if (handledAura)
     {
+        CreatureInfo const* ci = ObjectMgr::GetCreatureTemplate(handledAura->GetModifier()->m_miscvalue);
+        if (ci && ci->Scale != 1.f)
+            SetObjectScale(ci->Scale * GetObjectScaleMod());
         SetDisplayId(handledAura->GetModifier()->m_amount);
         return;
     }
@@ -10289,12 +10298,14 @@ void Unit::RestoreDisplayId()
     {
         if (uint32 displayId = shapeshiftAura.front()->GetModifier()->m_amount) // can be zero
         {
+            SetObjectScale(GetNativeScale() * GetObjectScaleMod());
             SetDisplayId(displayId);
             return;
         }
     }
 
     // no auras found - set modelid to default
+    SetObjectScale(GetNativeScale() * GetObjectScaleMod());
     SetDisplayId(GetNativeDisplayId());
 }
 
@@ -10302,10 +10313,13 @@ void Unit::UpdateModelData()
 {
     if (CreatureModelInfo const* modelInfo = sObjectMgr.GetCreatureModelInfo(GetDisplayId()))
     {
-        // we expect values in database to be relative to scale = 1.0
-        SetFloatValue(UNIT_FIELD_BOUNDINGRADIUS, GetObjectScale() * modelInfo->bounding_radius);
+        float nativeScale = GetNativeScale();
+        float currentScale = GetObjectScale();
+        float normalizedScale = currentScale / nativeScale;
+        // vanilla only - values need to be relative to either DBC scale for players or DB scale for creatures
+        SetFloatValue(UNIT_FIELD_BOUNDINGRADIUS, normalizedScale * modelInfo->bounding_radius);
 
-        SetFloatValue(UNIT_FIELD_COMBATREACH, GetObjectScale() * modelInfo->combat_reach);
+        SetFloatValue(UNIT_FIELD_COMBATREACH, normalizedScale * modelInfo->combat_reach);
 
         SetBaseWalkSpeed(modelInfo->SpeedWalk);
         SetBaseRunSpeed(modelInfo->SpeedRun, false);
@@ -11038,7 +11052,7 @@ void Unit::UpdateSplinePosition(bool relocateOnly)
     {
         if (movespline->isFacingTarget())
         {
-            if (Unit const* target = ObjectAccessor::GetUnit(*this, ObjectGuid(movespline->GetFacing().target)))
+            if (WorldObject const* target = GetMap()->GetWorldObject(ObjectGuid(movespline->GetFacing().target)))
             {
                 pos.o = GetAngle(target);
                 faced = true;
@@ -11906,7 +11920,7 @@ float Unit::GetCollisionHeight() const
     CreatureModelDataEntry const* modelData = sCreatureModelDataStore.LookupEntry(displayInfo->ModelId);
     MANGOS_ASSERT(modelData);
 
-    float const collisionHeight = scaleMod * modelData->CollisionHeight * modelData->Scale * displayInfo->scale;
+    float const collisionHeight = scaleMod * modelData->CollisionHeight;
     return collisionHeight == 0.0f ? DEFAULT_COLLISION_HEIGHT : collisionHeight;
 }
 
@@ -11936,7 +11950,7 @@ float Unit::GetCollisionWidth() const
     CreatureModelDataEntry const* modelData = sCreatureModelDataStore.LookupEntry(displayInfo->ModelId);
     MANGOS_ASSERT(modelData);
 
-    float const collisionWidth = scaleMod * modelData->CollisionWidth * modelData->Scale * displayInfo->scale;
+    float const collisionWidth = scaleMod * modelData->CollisionWidth;
     return collisionWidth == 0.0f ? DEFAULT_COLLISION_WIDTH : collisionWidth;
 }
 

@@ -1951,10 +1951,7 @@ void Aura::HandleAuraModShapeshift(bool apply, bool Real)
         target->RemoveSpellsCausingAura(SPELL_AURA_MOD_SHAPESHIFT, GetHolder());
 
         if (m_modifier.m_amount > 0)
-        {
-            target->SetObjectScale(DEFAULT_OBJECT_SCALE * target->GetObjectScaleMod());
             target->SetDisplayId(m_modifier.m_amount);
-        }
 
         if (PowerType != POWER_MANA)
         {
@@ -2014,18 +2011,6 @@ void Aura::HandleAuraModShapeshift(bool apply, bool Real)
     }
     else
     {
-        if (m_modifier.m_amount > 0)
-        {
-            // workaround for tauren scale appear too big
-            if (target->getRace() == RACE_TAUREN)
-            {
-                if (target->getGender() == GENDER_MALE)
-                    target->SetObjectScale(DEFAULT_TAUREN_MALE_SCALE * target->GetObjectScaleMod());
-                else
-                    target->SetObjectScale(DEFAULT_TAUREN_FEMALE_SCALE * target->GetObjectScaleMod());
-            }
-        }
-
         target->RestoreDisplayId();
 
         if (target->getClass() == CLASS_DRUID)
@@ -2095,47 +2080,6 @@ void Aura::HandleAuraTransform(bool apply, bool /*Real*/)
         {
             switch (GetId())
             {
-                case 16739:                                 // Orb of Deception
-                {
-                    uint32 orb_model = target->GetNativeDisplayId();
-                    switch (orb_model)
-                    {
-                        // Troll Female
-                        case 1479: m_modifier.m_amount = 10134; break;
-                        // Troll Male
-                        case 1478: m_modifier.m_amount = 10135; break;
-                        // Tauren Male
-                        case 59:   m_modifier.m_amount = 10136; break;
-                        // Human Male
-                        case 49:   m_modifier.m_amount = 10137; break;
-                        // Human Female
-                        case 50:   m_modifier.m_amount = 10138; break;
-                        // Orc Male
-                        case 51:   m_modifier.m_amount = 10139; break;
-                        // Orc Female
-                        case 52:   m_modifier.m_amount = 10140; break;
-                        // Dwarf Male
-                        case 53:   m_modifier.m_amount = 10141; break;
-                        // Dwarf Female
-                        case 54:   m_modifier.m_amount = 10142; break;
-                        // NightElf Male
-                        case 55:   m_modifier.m_amount = 10143; break;
-                        // NightElf Female
-                        case 56:   m_modifier.m_amount = 10144; break;
-                        // Undead Female
-                        case 58:   m_modifier.m_amount = 10145; break;
-                        // Undead Male
-                        case 57:   m_modifier.m_amount = 10146; break;
-                        // Tauren Female
-                        case 60:   m_modifier.m_amount = 10147; break;
-                        // Gnome Male
-                        case 1563: m_modifier.m_amount = 10148; break;
-                        // Gnome Female
-                        case 1564: m_modifier.m_amount = 10149; break;
-                        default: break;
-                    }
-                    break;
-                }
                 default:
                     if (!m_modifier.m_amount) // can be set through script
                         sLog.outError("Aura::HandleAuraTransform, spell %u does not have creature entry defined, need custom defined model.", GetId());
@@ -2150,7 +2094,7 @@ void Aura::HandleAuraTransform(bool apply, bool /*Real*/)
                 m_modifier.m_amount = 16358;                           // pig pink ^_^
                 sLog.outError("Auras: unknown creature id = %d (only need its modelid) Form Spell Aura Transform in Spell ID = %d", m_modifier.m_miscvalue, GetId());
             }
-            else
+            else if (!m_modifier.m_amount) // can be overriden by script
                 m_modifier.m_amount = Creature::ChooseDisplayId(ci);   // Will use the default model here
 
             // creature case, need to update equipment if additional provided
@@ -2159,6 +2103,9 @@ void Aura::HandleAuraTransform(bool apply, bool /*Real*/)
                 skipDisplayUpdate = ((Creature*)target)->IsTotem();
                 ((Creature*)target)->LoadEquipment(ci->EquipmentTemplateId, false);
             }
+
+            if (ci && ci->Scale != 1.f)
+                target->SetObjectScale(ci->Scale * target->GetObjectScaleMod());
         }
 
         if (!skipDisplayUpdate)

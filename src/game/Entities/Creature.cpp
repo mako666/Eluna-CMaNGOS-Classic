@@ -2229,6 +2229,11 @@ bool Creature::LoadCreatureAddon(bool reload)
     return true;
 }
 
+float Creature::GetNativeScale() const
+{
+    return GetCreatureInfo()->Scale;
+}
+
 /// Sends a message to LocalDefense and WorldDefense channels for players of the other team
 void Creature::SendZoneUnderAttackMessage(Player* attacker) const
 {
