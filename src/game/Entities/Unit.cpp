@@ -59,6 +59,11 @@
  #include "Metric/Metric.h"
 #endif
 
+#ifdef ENABLE_PLAYERBOTS
+#include "playerbot.h"
+#include "GuildTaskMgr.h"
+#endif
+
 #include <math.h>
 #include <limits>
 #include <array>
@@ -1349,6 +1354,12 @@ void Unit::JustKilledCreature(Unit* killer, Creature* victim, Player* responsibl
 #else
         if (BattleGround* bg = responsiblePlayer->GetBattleGround())
             bg->HandleKillUnit(victim, responsiblePlayer);
+#endif
+
+#ifdef ENABLE_PLAYERBOTS
+    // Guild Task check
+    if (responsiblePlayer)
+        sGuildTaskMgr.CheckKillTask(responsiblePlayer, victim);
 #endif
 
     // Notify the outdoor pvp script
