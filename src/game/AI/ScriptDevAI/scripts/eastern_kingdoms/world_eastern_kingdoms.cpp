@@ -18,6 +18,9 @@
 #include "AI/ScriptDevAI/include/sc_common.h"
 #include "AI/ScriptDevAI/scripts/world/world_map_scripts.h"
 #include "World/WorldState.h"
+#include "World/WorldStateDefines.h"
+#include "GameEvents/GameEventMgr.h"
+#include "AI/ScriptDevAI/scripts/world/scourge_invasion.h"
 
 /* *********************************************************
  *                  EASTERN KINGDOMS
@@ -38,6 +41,31 @@ struct world_map_eastern_kingdoms : public ScriptedMap
             case NPC_FALSTAD_WILDHAMMER:
             case NPC_SHORT_JOHN_MITHRIL:
                 m_npcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+                break;
+            case NPC_NECROPOLIS_HEALTH:
+                m_npcEntryGuidCollection[pCreature->GetEntry()].push_back(pCreature->GetObjectGuid());
+                break;
+        }
+    }
+
+    void OnCreatureDeath(Creature* pCreature) override
+    {
+        switch (pCreature->GetEntry())
+        {
+            case NPC_NECROPOLIS_HEALTH:
+                m_npcEntryGuidCollection.erase(pCreature->GetObjectGuid());
+                break;
+            default:
+                break;
+        }
+    }
+
+    void OnObjectCreate(GameObject* pGo) override
+    {
+        switch (pGo->GetEntry())
+        {
+            case GO_SUMMON_CIRCLE:
+                m_goEntryGuidCollection[pGo->GetEntry()].push_back(pGo->GetObjectGuid());
                 break;
         }
     }
