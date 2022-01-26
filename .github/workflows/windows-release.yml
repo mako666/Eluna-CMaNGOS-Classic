@@ -24,23 +24,24 @@ jobs:
           - OPTIONAL_DEFINES: ""
             TYPE: "default"
 
-          - OPTIONAL_DEFINES: "-DBUILD_EXTRACTORS=ON -DBUILD_PLAYERBOT=ON -DBUILD_AHBOT=ON -DBUILD_RECASTDEMOMOD=ON -DBUILD_GIT_ID=ON"
+          - OPTIONAL_DEFINES: "-DBUILD_EXTRACTORS=ON -DBUILD_PLAYERBOT=ON -DBUILD_AHBOT=ON -DBUILD_RECASTDEMOMOD=ON -DBUILD_GIT_ID=ON -DBUILD_ELUNA=ON"
             TYPE: "with-all"
 
-          - OPTIONAL_DEFINES: "-DBUILD_PLAYERBOT=ON -DBUILD_AHBOT=ON"
-            TYPE: "with-playerbot-ahbot"
+          - OPTIONAL_DEFINES: "-DBUILD_PLAYERBOT=ON -DBUILD_AHBOT=ON -DBUILD_ELUNA=ON"
+            TYPE: "with-playerbot-ahbot-eluna"
 
-          - OPTIONAL_DEFINES: "-DBUILD_PLAYERBOT=ON"
-            TYPE: "with-playerbot"
+          - OPTIONAL_DEFINES: "-DBUILD_PLAYERBOT=ON -DBUILD_ELUNA=ON"
+            TYPE: "with-playerbot-eluna"
 
-          - OPTIONAL_DEFINES: "-DBUILD_AHBOT=ON"
-            TYPE: "with-ahbot"
+          - OPTIONAL_DEFINES: "-DBUILD_AHBOT=ON -DBUILD_ELUNA=ON"
+            TYPE: "with-ahbot-eluna"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v2
         with:
           path: ${{env.REPO_DIR}}
+          submodules: true
 
       - uses: FranzDiebold/github-env-vars-action@v2
       - name: Create Build Environment
