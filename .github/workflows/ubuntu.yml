@@ -85,6 +85,5 @@ jobs:
         uses: rjstone/discord-webhook-notify@v1.0.4
         with:
           severity: error
-          description: Linux build failed
           webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
           avatarUrl: https://github.githubassets.com/images/modules/logos_page/Octocat.png
