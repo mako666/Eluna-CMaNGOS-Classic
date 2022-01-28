@@ -106,20 +106,20 @@ jobs:
         with:
           name: snapshot-with-all
           path: all_snapshots
-      - name: Download artifact snapshot-with-playerbot-ahbot
+      - name: Download artifact snapshot-with-playerbot-ahbot-eluna
         uses: actions/download-artifact@v1
         with:
-          name: snapshot-with-playerbot-ahbot
+          name: snapshot-with-playerbot-ahbot-eluna
           path: all_snapshots
-      - name: Download artifact snapshot-with-playerbot
+      - name: Download artifact snapshot-with-playerbot-eluna
         uses: actions/download-artifact@v1
         with:
-          name: snapshot-with-playerbot
+          name: snapshot-with-playerbot-eluna
           path: all_snapshots
-      - name: Download artifact snapshot-with-ahbot
+      - name: Download artifact snapshot-with-ahbot-eluna
         uses: actions/download-artifact@v1
         with:
-          name: snapshot-with-ahbot
+          name: snapshot-with-ahbot-eluna
           path: all_snapshots
 
       - name: Get current date
