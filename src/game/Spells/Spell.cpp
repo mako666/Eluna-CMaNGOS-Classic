@@ -3631,13 +3631,28 @@ void Spell::SendCastResult(Player const* caster, SpellEntry const* spellInfo, Sp
                             break;
                     } */
                 break;
+            case SPELL_FAILED_TOTEMS:
+                for (uint32 i : spellInfo->Totem)
+                    if (i)
+                        data << uint32(i);
+                break;
             case SPELL_FAILED_EQUIPPED_ITEM_CLASS:
+            case SPELL_FAILED_EQUIPPED_ITEM_CLASS_MAINHAND:
+            case SPELL_FAILED_EQUIPPED_ITEM_CLASS_OFFHAND:
                 data << uint32(spellInfo->EquippedItemClass);
                 data << uint32(spellInfo->EquippedItemSubClassMask);
-                data << uint32(spellInfo->EquippedItemInventoryTypeMask);
+                break;
+            case SPELL_FAILED_NEED_EXOTIC_AMMO:
+                data << uint32(spellInfo->EquippedItemSubClassMask);
+                break;
+            case SPELL_FAILED_REAGENTS:
+                data << param1;                                 // item id
                 break;
             case SPELL_FAILED_PREVENTED_BY_MECHANIC:
                 data << param1;
+                break;
+            case SPELL_FAILED_MIN_SKILL:
+                data << uint32(0);                              // required skill value
                 break;
             default:
                 break;
@@ -6044,6 +6059,9 @@ SpellCastResult Spell::CheckRange(bool strict)
     if (!target && m_spellInfo->Targets & (TARGET_FLAG_LOCKED | TARGET_FLAG_GAMEOBJECT))
         target = m_targets.getGOTarget();
 
+    if (!target && m_clientCast && HasSpellTarget(m_spellInfo, TARGET_UNIT_CASTER_PET))
+        target = m_caster->GetPet();
+
     if (target && target != m_trueCaster)
     {
         // distance from target in checks
@@ -6329,8 +6347,9 @@ SpellCastResult Spell::CheckItems()
     // if not item target then required item must be equipped (for triggered case not report error)
     else
     {
-        if (m_caster->IsPlayer() && !static_cast<Player*>(m_caster)->HasItemFitToSpellReqirements(m_spellInfo))
-            return m_IsTriggeredSpell ? SPELL_FAILED_DONT_REPORT : SPELL_FAILED_EQUIPPED_ITEM_CLASS;
+        uint32 error = SPELL_FAILED_EQUIPPED_ITEM_CLASS;
+        if (m_caster->IsPlayer() && !static_cast<Player*>(m_caster)->HasItemFitToSpellReqirements(m_spellInfo, nullptr, &error))
+            return m_IsTriggeredSpell ? SPELL_FAILED_DONT_REPORT : SpellCastResult(error);
     }
 
     // check spell focus object
@@ -6365,7 +6384,7 @@ SpellCastResult Spell::CheckItems()
                 {
                     ItemPrototype const* proto = m_CastItem->GetProto();
                     if (!proto)
-                        return SPELL_FAILED_ITEM_NOT_READY;
+                        return SPELL_FAILED_REAGENTS;
                     for (int s = 0; s < MAX_ITEM_PROTO_SPELLS; ++s)
                     {
                         // CastItem will be used up and does not count as reagent
@@ -6379,7 +6398,10 @@ SpellCastResult Spell::CheckItems()
                 }
 
                 if (!p_caster->HasItemCount(itemid, itemcount))
-                    return SPELL_FAILED_ITEM_NOT_READY;
+                {
+                    m_param1 = itemid;
+                    return SPELL_FAILED_REAGENTS;
+                }
             }
         }
 
@@ -6399,7 +6421,7 @@ SpellCastResult Spell::CheckItems()
         }
 
         if (totems != 0)
-            return SPELL_FAILED_ITEM_GONE;                  //[-ZERO] not sure of it
+            return SPELL_FAILED_TOTEMS;
 
         /*[-ZERO] to rewrite?
         // Check items for TotemCategory  (items presence in inventory)
