@@ -51,6 +51,11 @@ if(NOT BUILD_ELUNA)
   endforeach()
 else()
 add_definitions(-DBUILD_ELUNA -DCMANGOS -DCLASSIC)
+add_subdirectory(LuaEngine)
+endif()
+
+if (BUILD_ELUNA_MODULES)
+  add_definitions(-DELUNA_MODULES -DLUA_COMPAT_MODULE)
 endif()
 
 if(NOT BUILD_PLAYERBOT)
