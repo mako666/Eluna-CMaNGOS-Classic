@@ -5203,9 +5203,15 @@ bool Player::UpdateSkillPro(uint16 SkillId, int32 Chance, uint16 diff)
 void Player::UpdateWeaponSkill(WeaponAttackType attType)
 {
     // no skill gain in pvp
-    Unit* pVictim = GetVictim();
-    if (pVictim && pVictim->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
-        return;
+    Unit* victim = GetVictim();
+    if (victim)
+    {
+        if (victim->IsPlayerControlled())
+            return;
+
+        if (victim->IsNoWeaponSkillGain())
+            return;
+    }
 
     if (IsNoWeaponShapeShift())
         return;
@@ -20138,6 +20144,19 @@ void Player::AddCooldown(SpellEntry const& spellEntry, ItemPrototype const* item
         // after some aura fade or potion activation we have to send cooldown event to start cd client side
         if (haveToSendEvent)
         {
+            // client keeps track of category cd by original spellId
+            if (spellCategory && spellEntry.HasAttribute(SPELL_ATTR_DISABLED_WHILE_ACTIVE))
+            {
+                auto itr = m_cooldownMap.FindByCategory(spellCategory);
+                if (itr != m_cooldownMap.end() && (*itr).second->GetSpellId() != spellEntry.Id)
+                {
+                    WorldPacket data(SMSG_COOLDOWN_EVENT, (4 + 8));
+                    data << uint32((*itr).second->GetSpellId());
+                    data << GetObjectGuid();
+                    SendDirectMessage(data);
+                }
+            }
+
             // Send activate cooldown timer (possible 0) at client side
             WorldPacket data(SMSG_COOLDOWN_EVENT, (4 + 8));
             data << uint32(spellEntry.Id);
@@ -20398,4 +20417,53 @@ void Player::SetSpellModSpell(Spell* spell)
     }
     m_modsSpell = spell;
     m_consumedMods = &spell->m_usedAuraCharges;
+}
+
+std::pair<float, float> Player::RequestFollowData(ObjectGuid guid)
+{
+    uint32 slotId = 0;
+    for (uint32 i = 0; i < 10; ++i)
+    {
+        if (m_followAngles.find(i) == m_followAngles.end())
+        {
+            slotId = i;
+            break;
+        }
+    }
+    m_followAngles.emplace(slotId, guid);
+    switch (slotId)
+    {
+        case 0: return { M_PI_F / 2, 1.5f }; // left
+        case 1: return { 3 * M_PI_F / 2, 1.5f }; // right
+        case 2: return { 7 * M_PI_F / 6, 1.5f }; // behind right
+        case 3: return { 5 * M_PI_F / 6, 1.5f }; // behind left
+        default: return { M_PI_F, 3.0f }; // behind
+        // TODO: Army of the dead angles
+    }
+}
+
+void Player::RelinquishFollowData(ObjectGuid guid)
+{
+    for (auto itr = m_followAngles.begin(); itr != m_followAngles.end(); ++itr)
+    {
+        if (itr->second == guid)
+        {
+            m_followAngles.erase(itr);
+            return;
+        }
+    }
+}
+
+uint32 Player::LookupHighestLearnedRank(uint32 spellId)
+{
+    uint32 ownedRank = 0;
+    uint32 higherRank = spellId;
+    do
+    {
+        if (HasSpell(higherRank))
+            ownedRank = higherRank;
+        else
+            break;
+    } while ((higherRank = sSpellMgr.GetNextSpellInChain(ownedRank)));
+    return ownedRank;
 }
