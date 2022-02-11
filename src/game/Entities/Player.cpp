@@ -613,6 +613,8 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
 
     for (auto& enchantMod : m_enchantmentFlatMod)
         enchantMod = 0;
+	
+    m_baseSpellPower = 0;
 
     // Player summoning
     m_summon_expire = 0;
