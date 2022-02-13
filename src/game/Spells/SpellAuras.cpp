@@ -1288,18 +1288,6 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         m_modifier.periodictime = 1 * IN_MILLISECONDS;
                         m_periodicTimer = m_modifier.periodictime;
                         break;
-                    case 10255:                             // Stoned
-                    {
-                        if (Unit* caster = GetCaster())
-                        {
-                            if (caster->GetTypeId() != TYPEID_UNIT)
-                                return;
-
-                            caster->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER | UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_NOT_SELECTABLE);
-                            caster->addUnitState(UNIT_STAT_ROOT);
-                        }
-                        return;
-                    }
                     case 13139:                             // net-o-matic
                         // root to self part of (root_target->charge->root_self sequence
                         if (Unit* caster = GetCaster())
@@ -1435,18 +1423,6 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
 
         switch (GetId())
         {
-            case 10255:                                     // Stoned
-            {
-                if (Unit* caster = GetCaster())
-                {
-                    if (caster->GetTypeId() != TYPEID_UNIT)
-                        return;
-
-                    // see dummy effect of spell 10254 for removal of flags etc
-                    caster->CastSpell(caster, 10254, TRIGGERED_OLD_TRIGGERED);
-                }
-                return;
-            }
             case 11129:                                     // Combustion
                 target->RemoveAurasDueToSpell(28682); // on Combustion removal remove crit % stacks
                 return;
@@ -3683,7 +3659,7 @@ void Aura::HandleModTotalPercentStat(bool apply, bool /*Real*/)
     if (m_modifier.m_miscvalue == STAT_STAMINA && maxHPValue > 0 && GetSpellProto()->HasAttribute(SPELL_ATTR_ABILITY))
     {
         // newHP = (curHP / maxHP) * newMaxHP = (newMaxHP * curHP) / maxHP -> which is better because no int -> double -> int conversion is needed
-        uint32 newHPValue = (target->GetMaxHealth() * curHPValue) / maxHPValue;
+        uint32 newHPValue = std::max(1u, (target->GetMaxHealth() * curHPValue) / maxHPValue);
         target->SetHealth(newHPValue);
     }
 }
