@@ -1393,17 +1393,8 @@ class Player : public Unit
         void setRegenTimer(uint32 time) {m_regenTimer = time;}
 
         uint32 GetMoney() const { return GetUInt32Value(PLAYER_FIELD_COINAGE); }
-#ifdef BUILD_ELUNA
         void ModifyMoney(int32 d);
-#else
-        void ModifyMoney(int32 d)
-        {
-            if (d < 0)
-                SetMoney(GetMoney() > uint32(-d) ? GetMoney() + d : 0);
-            else
-                SetMoney(GetMoney() < uint32(MAX_MONEY_AMOUNT - d) ? GetMoney() + d : MAX_MONEY_AMOUNT);
-        }
-#endif
+
         void SetMoney(uint32 value)
         {
             SetUInt32Value(PLAYER_FIELD_COINAGE, value);

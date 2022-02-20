@@ -99,6 +99,11 @@ if(WIN32)
     add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${CMAKE_SOURCE_DIR}/contrib/lua_scripts/masterscript.lua\" \"$<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/lua_scripts/masterscript.lua\")
   endif()
+  
+  if(BUILD_IKE3_BOTS)
+    add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
+	  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/aiplayerbot.conf.dist.in\" \"$<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/aiplayerbot.conf.dist\")
+  endif()
 endif()
 
 set(EXECUTABLE_LINK_FLAGS "")
@@ -139,6 +144,11 @@ if (BUILD_ELUNA)
   add_definitions(-DBUILD_ELUNA -DCLASSIC -DCMANGOS)
   install(FILES ${CMAKE_SOURCE_DIR}/contrib/lua_scripts/masterscript.lua DESTINATION ${BIN_DIR}/lua_scripts)
   install(DIRECTORY ${CMAKE_SOURCE_DIR}/src/game/LuaEngine/extensions DESTINATION ${BIN_DIR}/lua_scripts)
+endif()
+
+if (BUILD_IKE3_BOTS)
+  configure_file(${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/aiplayerbot.conf.dist.in ${CMAKE_CURRENT_BINARY_DIR}/aiplayerbot.conf.dist)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aiplayerbot.conf.dist DESTINATION ${CONF_DIR})
 endif()
 
 if(MSVC)

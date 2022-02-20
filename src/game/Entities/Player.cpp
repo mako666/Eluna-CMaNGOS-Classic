@@ -19815,18 +19815,18 @@ void Player::_SaveBGData()
     m_bgData.m_needSave = false;
 }
 
-#ifdef BUILD_ELUNA
 void Player::ModifyMoney(int32 d)
 {
+#ifdef BUILD_ELUNA
     // used by eluna
     sEluna->OnMoneyChanged(this, d);
+#endif
 
     if (d < 0)
         SetMoney(GetMoney() > uint32(-d) ? GetMoney() + d : 0);
     else
         SetMoney(GetMoney() < uint32(MAX_MONEY_AMOUNT - d) ? GetMoney() + d : MAX_MONEY_AMOUNT);
 }
-#endif
 
 void Player::RemoveAtLoginFlag(AtLoginFlags f, bool in_db_also /*= false*/)
 {
