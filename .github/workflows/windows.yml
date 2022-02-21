@@ -56,7 +56,7 @@ jobs:
           # this build step will fail
 
       - name: Configure
-        run: cmake -DBUILD_ELUNA=ON -B ${{env.BUILD_DIR}} -S ${{env.REPO_DIR}}
+        run: cmake -DBUILD_ELUNA=ON -DBUILD_IKE3_BOTS=ON -B ${{env.BUILD_DIR}} -S ${{env.REPO_DIR}}
 
       - name: Build
         env:

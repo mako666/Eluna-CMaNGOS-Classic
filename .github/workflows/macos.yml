@@ -26,7 +26,7 @@ jobs:
           echo "OPENSSL_ROOT_DIR=$(brew --prefix --installed openssl)" >> $GITHUB_ENV
 
       - name: Configure
-        run: cmake -DBUILD_ELUNA=ON -DBoost_ARCHITECTURE=-x64 -B ${{env.BUILD_DIR}} -S ${{env.REPO_DIR}}
+        run: cmake -DBUILD_ELUNA=ON -DBUILD_IKE3_BOTS=ON -DBoost_ARCHITECTURE=-x64 -B ${{env.BUILD_DIR}} -S ${{env.REPO_DIR}}
 
       - name: Build
         env:

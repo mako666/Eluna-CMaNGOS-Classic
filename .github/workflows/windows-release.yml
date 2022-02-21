@@ -24,14 +24,11 @@ jobs:
           - OPTIONAL_DEFINES: ""
             TYPE: "default"
 
-          - OPTIONAL_DEFINES: "-DBUILD_EXTRACTORS=ON -DBUILD_PLAYERBOT=ON -DBUILD_AHBOT=ON -DBUILD_RECASTDEMOMOD=ON -DBUILD_GIT_ID=ON -DBUILD_ELUNA=ON"
+          - OPTIONAL_DEFINES: "-DBUILD_EXTRACTORS=ON -DBUILD_IKE3_BOTS=ON -DBUILD_RECASTDEMOMOD=ON -DBUILD_GIT_ID=ON -DBUILD_ELUNA=ON"
             TYPE: "with-all"
 
-          - OPTIONAL_DEFINES: "-DBUILD_PLAYERBOT=ON -DBUILD_AHBOT=ON -DBUILD_ELUNA=ON"
-            TYPE: "with-playerbot-ahbot-eluna"
-
-          - OPTIONAL_DEFINES: "-DBUILD_PLAYERBOT=ON -DBUILD_ELUNA=ON"
-            TYPE: "with-playerbot-eluna"
+          - OPTIONAL_DEFINES: "-DBUILD_IKE3_BOTS=ON -DBUILD_ELUNA=ON"
+            TYPE: "with-ike3bots-eluna"
 
           - OPTIONAL_DEFINES: "-DBUILD_AHBOT=ON -DBUILD_ELUNA=ON"
             TYPE: "with-ahbot-eluna"
@@ -106,15 +103,10 @@ jobs:
         with:
           name: snapshot-with-all
           path: all_snapshots
-      - name: Download artifact snapshot-with-playerbot-ahbot-eluna
+      - name: Download artifact snapshot-with-ike3bots-eluna
         uses: actions/download-artifact@v1
         with:
-          name: snapshot-with-playerbot-ahbot-eluna
-          path: all_snapshots
-      - name: Download artifact snapshot-with-playerbot-eluna
-        uses: actions/download-artifact@v1
-        with:
-          name: snapshot-with-playerbot-eluna
+          name: snapshot-with-ike3bots-eluna
           path: all_snapshots
       - name: Download artifact snapshot-with-ahbot-eluna
         uses: actions/download-artifact@v1
