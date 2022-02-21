@@ -30,13 +30,13 @@
 #include "Maps/Map.h"
 #include "Globals/ObjectMgr.h"
 #include "Chat/Chat.h"
-#include "World.h"
+#include "World/World.h"
 #include "WorldPacket.h"
 #include "Server/WorldSession.h"
-#include "Language.h"
+#include "Tools/Language.h"
 #include "Groups/Group.h"
-#include "LFGMgr.h"
-#include "LFGHandler.h"
+#include "LFG/LFGMgr.h"
+#include "LFG/LFGHandler.h"
 
 INSTANTIATE_SINGLETON_1(LFGQueue);
 

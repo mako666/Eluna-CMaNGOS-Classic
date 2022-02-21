@@ -31,12 +31,12 @@
 #include "Server/WorldSession.h"
 #include "Entities/Object.h"
 #include "Chat/Chat.h"
-#include "Language.h"
+#include "Tools/Language.h"
 #include "DBScripts/ScriptMgr.h"
 #include "World/World.h"
 #include "Groups/Group.h"
-#include "LFGHandler.h"
-#include "LFGMgr.h"
+#include "LFG/LFGHandler.h"
+#include "LFG/LFGMgr.h"
 
 void WorldSession::HandleMeetingStoneJoinOpcode(WorldPacket& recv_data)
 {
