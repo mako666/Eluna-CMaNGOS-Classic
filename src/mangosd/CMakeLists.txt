@@ -103,6 +103,8 @@ if(WIN32)
   if(BUILD_IKE3_BOTS)
     add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
 	  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/aiplayerbot.conf.dist.in\" \"$<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/aiplayerbot.conf.dist\")
+	add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
+	  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot/ahbot.conf.dist.in\" \"$<TARGET_FILE_DIR:${EXECUTABLE_NAME}>/ahbot.conf.dist\")
   endif()
 endif()
 
@@ -149,6 +151,8 @@ endif()
 if (BUILD_IKE3_BOTS)
   configure_file(${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/aiplayerbot.conf.dist.in ${CMAKE_CURRENT_BINARY_DIR}/aiplayerbot.conf.dist)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aiplayerbot.conf.dist DESTINATION ${CONF_DIR})
+  configure_file(${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot/ahbot.conf.dist.in ${CMAKE_CURRENT_BINARY_DIR}/ahbot.conf.dist)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ahbot.conf.dist DESTINATION ${CONF_DIR})
 endif()
 
 if(MSVC)
