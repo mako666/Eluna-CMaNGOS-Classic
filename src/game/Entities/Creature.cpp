@@ -2076,6 +2076,8 @@ void Creature::CallAssistance()
     // FIXME: should player pets call for assistance?
     if (!m_AlreadyCallAssistance && GetVictim() && !HasCharmer())
     {
+        MANGOS_ASSERT(AI());
+
         SetNoCallAssistance(true);
 
         if (!CanCallForAssistance())
@@ -2249,6 +2251,12 @@ void Creature::SetInCombatWithZone(bool checkAttackability)
     if (!CanHaveThreatList())
     {
         sLog.outError("Creature entry %u call SetInCombatWithZone but creature cannot have threat list.", GetEntry());
+        return;
+    }
+
+    if (!AI())
+    {
+        sLog.outError("Creature entry %u call SetInCombatWithZone but creature does not have AI. Possible call during create.", GetEntry());
         return;
     }
 

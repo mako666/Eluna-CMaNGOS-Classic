@@ -1751,6 +1751,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
         case TARGET_LOCATION_CASTER_LEFT:
         case TARGET_LOCATION_CASTER_RIGHT:
         {
+            WorldObject* caster = m_trueCaster;
             float angle = m_trueCaster->GetOrientation();
             switch (targetMode)
             {
@@ -1760,13 +1761,13 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, bool targ
                 case TARGET_LOCATION_CASTER_FRONT_RIGHT: angle += M_PI_F * 1.75f; break;
                 case TARGET_LOCATION_CASTER_FRONT:                                break;
                 case TARGET_LOCATION_CASTER_BACK:        angle += M_PI_F;         break;
-                case TARGET_LOCATION_UNIT_MINION_POSITION:
+                case TARGET_LOCATION_UNIT_MINION_POSITION: caster = GetCastingObject(); // projected from original caster if necessary
                 case TARGET_LOCATION_CASTER_LEFT:        angle += M_PI_F / 2;     break;
                 case TARGET_LOCATION_CASTER_RIGHT:       angle -= M_PI_F / 2;     break;
             }
 
             Position pos;
-            m_trueCaster->GetFirstCollisionPosition(pos, radius, angle);
+            caster->GetFirstCollisionPosition(pos, radius, angle);
             m_targets.setDestination(pos.x, pos.y, pos.z);
             break;
         }
@@ -6232,7 +6233,7 @@ SpellCastResult Spell::CheckPower(bool strict)
 
 bool Spell::IgnoreItemRequirements() const
 {
-    if (m_channelOnly)
+    if (m_channelOnly || m_ignoreCosts)
         return true;
 
     // Workaround for double shard problem

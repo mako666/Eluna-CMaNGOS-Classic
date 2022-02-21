@@ -1616,27 +1616,6 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             }
             break;
         }
-        case SPELLFAMILY_SHAMAN:
-        {
-            switch (GetId())
-            {
-                case 6495:                                  // Sentry Totem
-                {
-                    if (target->GetTypeId() != TYPEID_PLAYER)
-                        return;
-
-                    Totem* totem = target->GetTotem(TOTEM_SLOT_AIR);
-
-                    if (totem && apply)
-                        ((Player*)target)->GetCamera().SetView(totem);
-                    else
-                        ((Player*)target)->GetCamera().ResetView();
-
-                    return;
-                }
-            }
-            break;
-        }
     }
 
     // pet auras
@@ -6185,10 +6164,10 @@ int32 Aura::OnAuraValueCalculate(Unit* caster, int32 currentValue)
     return currentValue;
 }
 
-void Aura::OnDamageCalculate(int32& advertisedBenefit, float& totalMod)
+void Aura::OnDamageCalculate(Unit* victim, int32& advertisedBenefit, float& totalMod)
 {
     if (AuraScript* script = GetAuraScript())
-        return script->OnDamageCalculate(this, advertisedBenefit, totalMod);
+        return script->OnDamageCalculate(this, victim, advertisedBenefit, totalMod);
 }
 
 void Aura::OnApply(bool apply)
