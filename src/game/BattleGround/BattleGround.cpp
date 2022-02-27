@@ -1629,7 +1629,10 @@ void BattleGround::ChangeBgCreatureSpawnState(uint32 dbGuid, uint32 respawntime)
 
     Creature* obj = map->GetCreature(dbGuid);
     if (!obj)
+    {
+        map->GetSpawnManager().RespawnCreature(dbGuid, respawntime);
         return;
+    }
 
     if (respawntime == 0)
     {
@@ -1640,8 +1643,7 @@ void BattleGround::ChangeBgCreatureSpawnState(uint32 dbGuid, uint32 respawntime)
     {
         map->Add(obj);
         obj->SetRespawnDelay(respawntime);
-        obj->SetDeathState(JUST_DIED);
-        obj->RemoveCorpse();
+        obj->ForcedDespawn();
     }
 }
 

@@ -1833,7 +1833,7 @@ void Player::ToggleAFK()
         SetGroupUpdateFlag(GROUP_UPDATE_FLAG_STATUS);
 
     // afk player not allowed in battleground
-    if (isAFK() && InBattleGround())
+    if (isAFK() && InBattleGround() && !IsGameMaster())
         LeaveBattleground();
 }
 

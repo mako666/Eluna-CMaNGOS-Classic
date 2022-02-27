@@ -2856,6 +2856,12 @@ void Spell::Prepare()
 
     OnSuccessfulStart();
 
+    // Unsummon active Warlock demons when trying to summon a new one - vanilla only location
+    if (Unit* unitCaster = dynamic_cast<Unit*>(m_trueCaster))
+        if (m_spellInfo->HasAttribute(SPELL_ATTR_EX_DISMISS_PET))
+            if (Pet* pet = unitCaster->GetPet())
+                pet->Unsummon(PET_SAVE_NOT_IN_SLOT, unitCaster);
+
     // add non-triggered (with cast time and without)
     if (!m_IsTriggeredSpell)
     {
@@ -3067,11 +3073,6 @@ SpellCastResult Spell::cast(bool skipCheck)
 
     spellModController.SetSuccess();
 
-    if (Unit* unitCaster = dynamic_cast<Unit*>(m_trueCaster))
-        if (m_spellInfo->HasAttribute(SPELL_ATTR_EX_DISMISS_PET))
-            if (Pet* pet = unitCaster->GetPet())
-                pet->Unsummon(PET_SAVE_NOT_IN_SLOT, unitCaster);
-
     // CAST SPELL
     SendSpellCooldown();
     if (m_notifyAI && m_caster && m_caster->AI())
@@ -3096,7 +3097,7 @@ SpellCastResult Spell::cast(bool skipCheck)
         procTarget = m_caster;
 
     // Okay, everything is prepared. Now we need to distinguish between immediate and evented delayed spells
-    if (!IsDelayedSpell())
+    if (IsDelayedSpell())
     {
         // For channels, delay starts at channel end
         if (m_spellState != SPELL_STATE_CHANNELING)
