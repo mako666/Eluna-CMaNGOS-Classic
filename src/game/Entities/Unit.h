@@ -778,7 +778,7 @@ struct ProcExecutionData
     uint32 cooldown;
 
     // Scripting data
-    uint32 triggeredSpellId;
+    uint32 triggeredSpellId; // used to designate if a proc was overriden if > 0
     std::array<int32, MAX_EFFECT_INDEX> basepoints = { 0, 0, 0 };
     bool procOnce;
     Unit* triggerTarget;
@@ -997,7 +997,8 @@ enum ReactiveType
 #define MAX_CREATURE_ATTACK_RADIUS 45.0f                    // max distance for creature aggro (use with CONFIG_FLOAT_RATE_CREATURE_AGGRO)
 
 // Regeneration defines
-#define REGEN_TIME_FULL     2000                            // For this time difference is computed regen value
+#define REGEN_TIME_FULL         2000                            // For this time difference is computed regen value
+#define REGEN_TIME_FULL_UNIT    5000                            // For npcs
 
 // Power type values defines
 enum PowerDefaults
@@ -1664,7 +1665,7 @@ class Unit : public WorldObject
         virtual bool IsUnderwater() const;
         bool isInAccessablePlaceFor(Unit const* unit) const;
 
-        void EnergizeBySpell(Unit* victim, SpellEntry const* spellInfo, uint32 damage, Powers powerType);
+        void EnergizeBySpell(Unit* victim, SpellEntry const* spellInfo, uint32 damage, Powers powerType, bool sendLog = true);
         uint32 SpellNonMeleeDamageLog(Unit* pVictim, uint32 spellID, uint32 damage);
         SpellCastResult CastSpell(Unit* Victim, uint32 spellId, uint32 triggeredFlags, Item* castItem = nullptr, Aura* triggeredByAura = nullptr, ObjectGuid originalCaster = ObjectGuid(), SpellEntry const* triggeredBy = nullptr);
         SpellCastResult CastSpell(Unit* Victim, SpellEntry const* spellInfo, uint32 triggeredFlags, Item* castItem = nullptr, Aura* triggeredByAura = nullptr, ObjectGuid originalCaster = ObjectGuid(), SpellEntry const* triggeredBy = nullptr);
@@ -2150,10 +2151,7 @@ class Unit : public WorldObject
             return SPELL_AURA_PROC_CANT_TRIGGER;
         }
 
-        void SetLastManaUse()
-        {
-            m_lastManaUseTimer = 5000;
-        }
+        void SetLastManaUse() { m_lastManaUseTimer = 5000; }
         bool IsUnderLastManaUseEffect() const { return m_lastManaUseTimer != 0; }
 
         void SetContestedPvP(Player* attackedPlayer = nullptr);

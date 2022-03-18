@@ -39,6 +39,13 @@ set(EXECUTABLE_SRCS
 if(WIN32)
   # add resource file to windows build
   set(EXECUTABLE_SRCS ${EXECUTABLE_SRCS} mangosd.rc)
+  if(MSVC)
+    set(EXECUTABLE_SRCS
+      ${EXECUTABLE_SRCS}
+      ${CMAKE_SOURCE_DIR}/src/shared/WheatyExceptionReport.cpp
+      ${CMAKE_SOURCE_DIR}/src/shared/WheatyExceptionReport.h
+     )
+  endif()
 endif()
 
 include_directories(
@@ -56,6 +63,11 @@ target_link_libraries(${EXECUTABLE_NAME}
 )
 
 if(WIN32)
+  if(MSVC)
+    target_link_libraries(${EXECUTABLE_NAME}
+      dbghelp
+    )
+  endif()
   if(MINGW)
     target_link_libraries(${EXECUTABLE_NAME}
       wsock32

@@ -141,7 +141,7 @@ Creature::Creature(CreatureSubtype subtype) : Unit(),
     m_lootStatus(CREATURE_LOOT_STATUS_NONE),
     m_corpseAccelerationDecayDelay(MINIMUM_LOOTING_TIME),
     m_respawnTime(0), m_respawnDelay(25), m_respawnOverriden(false), m_respawnOverrideOnce(false), m_corpseDelay(60), m_canAggro(false),
-    m_respawnradius(5.0f), m_subtype(subtype), m_defaultMovementType(IDLE_MOTION_TYPE),
+    m_respawnradius(5.0f), m_interactionPauseTimer(0), m_subtype(subtype), m_defaultMovementType(IDLE_MOTION_TYPE),
     m_equipmentId(0), m_detectionRange(20.f), m_AlreadyCallAssistance(false), m_canCallForAssistance(true),
     m_isDeadByDefault(false),
     m_temporaryFactionFlags(TEMPFACTION_NONE),
@@ -152,7 +152,6 @@ Creature::Creature(CreatureSubtype subtype) : Unit(),
     m_immunitySet(UINT32_MAX),
     m_creatureGroup(nullptr)
 {
-    m_regenTimer = 200;
     m_valuesCount = UNIT_END;
 
     SetWalk(true, true);
@@ -483,6 +482,11 @@ bool Creature::InitEntry(uint32 Entry, CreatureData const* data /*=nullptr*/, Ga
         }
     }
 
+    if (cinfo->InteractionPauseTimer != -1)
+        m_interactionPauseTimer = cinfo->InteractionPauseTimer;
+    else
+        m_interactionPauseTimer = sWorld.getConfig(CONFIG_UINT32_INTERACTION_PAUSE_TIMER);
+
     return true;
 }
 
@@ -536,7 +540,7 @@ bool Creature::UpdateEntry(uint32 Entry, const CreatureData* data /*=nullptr*/, 
     uint32 attackTimer = GetCreatureInfo()->MeleeBaseAttackTime;
 
     SetAttackTime(BASE_ATTACK,  attackTimer);
-    SetAttackTime(OFF_ATTACK,   attackTimer - attackTimer / 4);
+    SetAttackTime(OFF_ATTACK,   attackTimer);
     SetAttackTime(RANGED_ATTACK, GetCreatureInfo()->RangedBaseAttackTime);
 
     uint32 unitFlags = GetCreatureInfo()->UnitFlags;
@@ -766,27 +770,21 @@ void Creature::Update(const uint32 diff)
     }
 }
 
-void Creature::RegenerateAll(uint32 update_diff)
+void Creature::RegenerateAll(uint32 diff)
 {
-    if (m_regenTimer > 0)
-    {
-        if (update_diff >= m_regenTimer)
-            m_regenTimer = 0;
-        else
-            m_regenTimer -= update_diff;
-    }
-    if (m_regenTimer != 0)
+    m_regenTimer += diff;
+    if (m_regenTimer < REGEN_TIME_FULL_UNIT)
         return;
 
     if (!IsInCombat() || GetCombatManager().IsEvadeRegen())
         RegenerateHealth();
 
-    RegeneratePower();
+    RegeneratePower(REGEN_TIME_FULL_UNIT / 1000);
 
-    m_regenTimer = REGEN_TIME_FULL;
+    m_regenTimer -= REGEN_TIME_FULL_UNIT;
 }
 
-void Creature::RegeneratePower()
+void Creature::RegeneratePower(float timerMultiplier)
 {
     if (!IsRegeneratingPower())
         return;
@@ -810,9 +808,9 @@ void Creature::RegeneratePower()
                 {
                     float ManaIncreaseRate = sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_MANA);
                     float intellect = GetStat(STAT_INTELLECT);
-                    addValue = sqrt(intellect) * OCTRegenMPPerSpirit() * ManaIncreaseRate;
+                    addValue = sqrt(intellect) * OCTRegenMPPerSpirit() * ManaIncreaseRate / 5.f * timerMultiplier;
                     if (!IsPet() && !HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) && addValue == 0.f)
-                        addValue = (GetMaxPower(POWER_MANA) / 20) / 5.f * 2.f;
+                        addValue = (GetMaxPower(POWER_MANA) / 20) / 5.f * timerMultiplier;
                 }
             }
             else
@@ -835,7 +833,7 @@ void Creature::RegeneratePower()
     {
         Modifier const* modifier = ModPowerRegenAura->GetModifier();
         if (modifier->m_miscvalue == int32(powerType))
-            addValue += modifier->m_amount;
+            addValue += modifier->m_amount / 5.f * timerMultiplier;
     }
 
     AuraList const& ModPowerRegenPCTAuras = GetAurasByType(SPELL_AURA_MOD_POWER_REGEN_PERCENT);
@@ -860,7 +858,8 @@ void Creature::RegenerateHealth()
     if (curValue >= maxValue)
         return;
 
-    uint32 addvalue = maxValue / 3;
+    // regenerate 33% for npc and ~13% for player controlled npc (enslave etc) ToDo: Find Regenvalue based on Spirit, might differ due to mob types
+    uint32 addvalue = IsPlayerControlled() ? maxValue * 0.13 : maxValue / 3;
 
     ModifyHealth(addvalue);
 }

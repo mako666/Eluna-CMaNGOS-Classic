@@ -448,14 +448,6 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     unitTarget->CastSpell(unitTarget, 9010, TRIGGERED_NONE);
                     return;
                 }
-                case 9204:                                  // Hate to Zero
-                case 20538:
-                case 26569:
-                case 26637:
-                {
-                    m_caster->getThreatManager().modifyThreatPercent(unitTarget, -100);
-                    return;
-                }
                 case 9976:                                  // Polly Eats the E.C.A.C.
                 {
                     if (unitTarget && unitTarget->GetTypeId() == TYPEID_UNIT)
@@ -1993,7 +1985,7 @@ void Spell::EffectPowerDrain(SpellEffectIndex eff_idx)
     m_spellLog.AddLog(uint32(SPELL_EFFECT_POWER_DRAIN), unitTarget->GetObjectGuid(), new_damage, uint32(powerType), gainMultiplier);
 
     if (int32 gain = int32(new_damage * gainMultiplier))
-        m_caster->EnergizeBySpell(m_caster, m_spellInfo, gain, powerType);
+        m_caster->EnergizeBySpell(m_caster, m_spellInfo, gain, powerType, false);
 }
 
 void Spell::EffectSendEvent(SpellEffectIndex effectIndex)
