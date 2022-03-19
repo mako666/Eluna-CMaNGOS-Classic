@@ -30,13 +30,13 @@
 #include "Maps/Map.h"
 #include "Globals/ObjectMgr.h"
 #include "Chat/Chat.h"
-#include "World/World.h"
+#include "World.h"
 #include "WorldPacket.h"
 #include "Server/WorldSession.h"
-#include "Tools/Language.h"
+#include "Language.h"
 #include "Groups/Group.h"
-#include "LFG/LFGMgr.h"
-#include "LFG/LFGHandler.h"
+#include "LFGMgr.h"
+#include "LFGHandler.h"
 
 INSTANTIATE_SINGLETON_1(LFGQueue);
 
@@ -54,7 +54,7 @@ void LFGPlayerQueueInfo::CalculateRoles(Classes playerClass)
     // Determine role priority
     for (ClassRoles role : PotentialRoles)
     {
-        rolePriority.emplace_back(std::pair<ClassRoles, RolesPriority>(role, LFGQueue::getPriority(playerClass, role)));
+        rolePriority.emplace_back(std::pair<ClassRoles, RolesPriority>(role, LFGQueue::GetPriority(playerClass, role)));
     }
 }
 
@@ -65,7 +65,7 @@ void LFGPlayerQueueInfo::CalculateTalentRoles(Player* player)
     // Determine role priority
     for (ClassRoles role : PotentialRoles)
     {
-        rolePriority.emplace_back(std::pair<ClassRoles, RolesPriority>(role, LFGQueue::getPriority(Classes(player->getClass()), role)));
+        rolePriority.emplace_back(std::pair<ClassRoles, RolesPriority>(role, LFGQueue::GetPriority(Classes(player->getClass()), role)));
     }
 }
 
@@ -93,7 +93,7 @@ void LFGQueue::AddToQueue(Player* leader, uint32 queueAreaID)
     if (grp && grp->IsLeader(leader->GetObjectGuid()))
     {
         // Add group to queued groups list
-        LFGGroupQueueInfo& i_Group = m_QueuedGroups[grp->GetId()];
+        LFGGroupQueueInfo& i_Group = m_queuedGroups[grp->GetId()];
 
         grp->CalculateLFGRoles(i_Group);
         i_Group.team = leader->GetTeam();
@@ -110,7 +110,7 @@ void LFGQueue::AddToQueue(Player* leader, uint32 queueAreaID)
     else if (!grp)
     {
         // Add player to queued players list
-        LFGPlayerQueueInfo& i_Player = m_QueuedPlayers[leader->GetObjectGuid()];
+        LFGPlayerQueueInfo& i_Player = m_queuedPlayers[leader->GetObjectGuid()];
 
         i_Player.team = leader->GetTeam();
         i_Player.areaId = queueAreaID;
@@ -131,13 +131,13 @@ void LFGQueue::RestoreOfflinePlayer(Player* player)
     if (!player || !player->GetSession())
         return;
 
-    QueuedPlayersMap::iterator offlinePlr = m_OfflinePlayers.find(player->GetObjectGuid());
+    QueuedPlayersMap::iterator offlinePlr = m_offlinePlayers.find(player->GetObjectGuid());
 
-    if (offlinePlr != m_OfflinePlayers.end())
+    if (offlinePlr != m_offlinePlayers.end())
     {
         player->GetSession()->SendMeetingstoneSetqueue(offlinePlr->second.areaId, MEETINGSTONE_STATUS_JOINED_QUEUE);
-        m_QueuedPlayers[player->GetObjectGuid()] = offlinePlr->second;
-        m_OfflinePlayers.erase(offlinePlr);
+        m_queuedPlayers[player->GetObjectGuid()] = offlinePlr->second;
+        m_offlinePlayers.erase(offlinePlr);
     }
     else
     {
@@ -162,7 +162,7 @@ ClassRoles LFGQueue::CalculateRoles(Classes playerClass)
     }
 }
 
-RolesPriority LFGQueue::getPriority(Classes playerClass, ClassRoles playerRoles)
+RolesPriority LFGQueue::GetPriority(Classes playerClass, ClassRoles playerRoles)
 {
     switch (playerRoles)
     {
@@ -251,44 +251,51 @@ std::map<uint32, int32> LFGQueue::GetTalentTrees(Player* _player)
     return tabs;
 }
 
-int LFGQueue::GetHighestTalentTree(Player* _player)
+uint32 LFGQueue::GetHighestTalentTree(Player* _player)
 {
-    if (_player->GetLevel() >= 10 && !_player->GetFreeTalentPoints())
+    if (_player->GetLevel() >= 10)
     {
         std::map<uint32, int32> tabs = GetTalentTrees(_player);
 
-        int tab = -1, max = 0;
+        uint32 tab = 4;
+        int32 max = 0;
         for (uint32 i = 0; i < uint32(3); i++)
         {
-            if (tab == -1 || max < tabs[i])
+            if (tab == 4 || max < tabs[i])
             {
                 tab = i;
                 max = tabs[i];
             }
         }
-        return tab;
+        if (tab != 4)
+            return tab;
     }
-    else
-    {
-        int tab = 0;
 
-        switch (_player->getClass())
-        {
-        case CLASS_PALADIN:
-            tab = 0;
-            break;
-        case CLASS_PRIEST:
-            tab = 1;
-            break;
-        }
-        return tab;
+    uint32 tab = 0;
+
+    // if no talents picked, use standard values
+    switch (_player->getClass())
+    {
+    case CLASS_SHAMAN:
+        tab = 2;
+        break;
+    case CLASS_PRIEST:
+        tab = 1;
+        break;
+    case CLASS_DRUID:
+        tab = 2;
+        break;
+    case CLASS_WARRIOR:
+        tab = 2;
+        break;
     }
+    return tab;
 }
 
 ClassRoles LFGQueue::CalculateTalentRoles(Player* _player)
 {
     ClassRoles role = LFG_ROLE_NONE;
-    int tab = GetHighestTalentTree(_player);
+    uint32 tab = GetHighestTalentTree(_player);
     switch (_player->getClass())
     {
     case CLASS_PRIEST:
@@ -334,9 +341,9 @@ ClassRoles LFGQueue::CalculateTalentRoles(Player* _player)
 
 void LFGQueue::UpdateGroup(uint32 groupId)
 {
-    QueuedGroupsMap::iterator qGroup = m_QueuedGroups.find(groupId);
+    QueuedGroupsMap::iterator qGroup = m_queuedGroups.find(groupId);
 
-    if (qGroup != m_QueuedGroups.end())
+    if (qGroup != m_queuedGroups.end())
     {
         if (Group* grp = sObjectMgr.GetGroupById(qGroup->first))
         {
@@ -349,19 +356,19 @@ void LFGQueue::UpdateGroup(uint32 groupId)
 
 void LFGQueue::Update(uint32 diff)
 {
-    if (m_QueuedGroups.empty() && m_QueuedPlayers.empty())
+    if (m_queuedGroups.empty() && m_queuedPlayers.empty())
         return;
 
     // Iterate over QueuedPlayersMap to update players timers and remove offline/disconnected players.
-    for (QueuedPlayersMap::iterator iter = m_QueuedPlayers.begin(); iter != m_QueuedPlayers.end();)
+    for (QueuedPlayersMap::iterator iter = m_queuedPlayers.begin(); iter != m_queuedPlayers.end();)
     {
         Player* plr = sObjectMgr.GetPlayer(iter->first);
 
         // Player could have been disconnected
         if (!plr || !plr->IsInWorld())
         {
-            m_OfflinePlayers[iter->first] = iter->second;
-            iter = m_QueuedPlayers.erase(iter);
+            m_offlinePlayers[iter->first] = iter->second;
+            iter = m_queuedPlayers.erase(iter);
             continue;
         }
 
@@ -381,17 +388,17 @@ void LFGQueue::Update(uint32 diff)
         ++iter;
     }
 
-    if (!m_QueuedGroups.empty())
+    if (!m_queuedGroups.empty())
     {
         // Iterate over QueuedGroupsMap to fill groups with roles they're missing.
-        for (QueuedGroupsMap::iterator qGroup = m_QueuedGroups.begin(); qGroup != m_QueuedGroups.end();)
+        for (QueuedGroupsMap::iterator qGroup = m_queuedGroups.begin(); qGroup != m_queuedGroups.end();)
         {
             Group* grp = sObjectMgr.GetGroupById(qGroup->first);
 
             // Safe check
             if (!grp)
             {
-                qGroup = m_QueuedGroups.erase(qGroup);
+                qGroup = m_queuedGroups.erase(qGroup);
                 continue;
             }
 
@@ -405,8 +412,8 @@ void LFGQueue::Update(uint32 diff)
             }
 
             // Iterate over QueuedPlayersMap to find suitable player to join group
-            QueuedPlayersMap::iterator next = m_QueuedPlayers.begin();
-            for (QueuedPlayersMap::iterator qPlayer = next; next != m_QueuedPlayers.end(); qPlayer = next)
+            QueuedPlayersMap::iterator next = m_queuedPlayers.begin();
+            for (QueuedPlayersMap::iterator qPlayer = next; next != m_queuedPlayers.end(); qPlayer = next)
             {
                 // Pre-increment iterator here since FindRoleToGroup() may remove qPlayer
                 // from the map
@@ -466,16 +473,16 @@ void LFGQueue::Update(uint32 diff)
     }
 
     // Pick first 2 players and form group out of them also inserting them into queue as group.
-    if (m_QueuedPlayers.size() >= _groupSize)
+    if (m_queuedPlayers.size() >= m_groupSize)
     {
         // Pick Leader as first target.
-        QueuedPlayersMap::iterator leader = m_QueuedPlayers.begin();
+        QueuedPlayersMap::iterator leader = m_queuedPlayers.begin();
 
         std::list<ObjectGuid> playersInArea;
         FindInArea(playersInArea, leader->second.areaId, leader->second.team, leader->first);
 
         // 4 players + the leader
-        if (playersInArea.size() >= _groupSize-1)
+        if (playersInArea.size() >= m_groupSize-1)
         {
             Player* pLeader = sObjectMgr.GetPlayer(leader->first);
             Player* pMember = sObjectMgr.GetPlayer(playersInArea.front());
@@ -515,15 +522,15 @@ void LFGQueue::Update(uint32 diff)
 // Don't pass playerGuid by ref since we may destroy it in RemovePlayerFromQueue
 bool LFGQueue::FindRoleToGroup(ObjectGuid playerGuid, Group* group, ClassRoles role)
 {
-    QueuedGroupsMap::iterator qGroup = m_QueuedGroups.find(group->GetId());
-    QueuedPlayersMap::iterator qPlayer = m_QueuedPlayers.find(playerGuid);
+    QueuedGroupsMap::iterator qGroup = m_queuedGroups.find(group->GetId());
+    QueuedPlayersMap::iterator qPlayer = m_queuedPlayers.find(playerGuid);
 
-    if (qGroup != m_QueuedGroups.end() && qPlayer != m_QueuedPlayers.end())
+    if (qGroup != m_queuedGroups.end() && qPlayer != m_queuedPlayers.end())
     {
         bool queueTimePriority = qPlayer->second.hasQueuePriority;
         bool classPriority = qPlayer->second.GetRolePriority(role);
         // Iterate over QueuedPlayersMap to find if players have been longer in Queue.
-        for (auto& itr : m_QueuedPlayers)
+        for (auto& itr : m_queuedPlayers)
         {
             if (qPlayer->first == itr.first)
                 continue;
@@ -610,18 +617,18 @@ bool LFGQueue::FindRoleToGroup(ObjectGuid playerGuid, Group* group, ClassRoles r
 
 bool LFGQueue::IsPlayerInQueue(ObjectGuid const& plrGuid) const
 {
-    return m_QueuedPlayers.find(plrGuid) != m_QueuedPlayers.end();
+    return m_queuedPlayers.find(plrGuid) != m_queuedPlayers.end();
 }
 
 bool LFGQueue::IsGroupInQueue(uint32 groupId) const
 {
-    return m_QueuedGroups.find(groupId) != m_QueuedGroups.end();
+    return m_queuedGroups.find(groupId) != m_queuedGroups.end();
 }
 
 void LFGQueue::RemovePlayerFromQueue(ObjectGuid const& plrGuid, PlayerLeaveMethod leaveMethod)
 {
-    QueuedPlayersMap::iterator iter = m_QueuedPlayers.find(plrGuid);
-    if (iter != m_QueuedPlayers.end())
+    QueuedPlayersMap::iterator iter = m_queuedPlayers.find(plrGuid);
+    if (iter != m_queuedPlayers.end())
     {
         if (leaveMethod == PLAYER_CLIENT_LEAVE)
         {
@@ -635,15 +642,15 @@ void LFGQueue::RemovePlayerFromQueue(ObjectGuid const& plrGuid, PlayerLeaveMetho
             }
         }
 
-        m_QueuedPlayers.erase(iter);
+        m_queuedPlayers.erase(iter);
     }
 }
 
 void LFGQueue::RemoveGroupFromQueue(uint32 groupId, GroupLeaveMethod leaveMethod)
 {
-    QueuedGroupsMap::iterator iter = m_QueuedGroups.find(groupId);
+    QueuedGroupsMap::iterator iter = m_queuedGroups.find(groupId);
 
-    if (iter != m_QueuedGroups.end())
+    if (iter != m_queuedGroups.end())
     {
         if (Group* grp = sObjectMgr.GetGroupById(groupId))
         {
@@ -668,13 +675,13 @@ void LFGQueue::RemoveGroupFromQueue(uint32 groupId, GroupLeaveMethod leaveMethod
             grp->SetLFGAreaId(0);
         }
 
-        m_QueuedGroups.erase(iter);
+        m_queuedGroups.erase(iter);
     }
 }
 
 void LFGQueue::FindInArea(std::list<ObjectGuid>& players, uint32 area, uint32 team, ObjectGuid const& exclude)
 {
-    for (const auto& itr : m_QueuedPlayers)
+    for (const auto& itr : m_queuedPlayers)
     {
         if (itr.first == exclude)
             continue;
@@ -686,8 +693,8 @@ void LFGQueue::FindInArea(std::list<ObjectGuid>& players, uint32 area, uint32 te
 
 void LFGQueue::GetPlayerQueueInfo(LFGPlayerQueueInfo* info, ObjectGuid const& plrGuid)
 {
-    QueuedPlayersMap::iterator iter = m_QueuedPlayers.find(plrGuid);
-    if (iter != m_QueuedPlayers.end())
+    QueuedPlayersMap::iterator iter = m_queuedPlayers.find(plrGuid);
+    if (iter != m_queuedPlayers.end())
         *info = iter->second;
 
     return;
@@ -695,8 +702,8 @@ void LFGQueue::GetPlayerQueueInfo(LFGPlayerQueueInfo* info, ObjectGuid const& pl
 
 void LFGQueue::GetGroupQueueInfo(LFGGroupQueueInfo* info, uint32 groupId)
 {
-    QueuedGroupsMap::iterator iter = m_QueuedGroups.find(groupId);
-    if (iter != m_QueuedGroups.end())
+    QueuedGroupsMap::iterator iter = m_queuedGroups.find(groupId);
+    if (iter != m_queuedGroups.end())
         *info = iter->second;
 
     return;

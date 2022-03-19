@@ -122,24 +122,24 @@ class LFGQueue
 
         static ClassRoles CalculateRoles(Classes playerClass);
         static ClassRoles CalculateTalentRoles(Player* player);
-        static int GetHighestTalentTree(Player* player);
+        static uint32 GetHighestTalentTree(Player* player);
         static std::map<uint32, int32> GetTalentTrees(Player* player);
-        static RolesPriority getPriority(Classes playerClass, ClassRoles playerRoles);
+        static RolesPriority GetPriority(Classes playerClass, ClassRoles playerRoles);
 
         static uint32 GetMaximumDPSSlots() { return 3u; }
 
     private:
         typedef std::map<ObjectGuid, LFGPlayerQueueInfo> QueuedPlayersMap;
-        QueuedPlayersMap m_QueuedPlayers;
-        QueuedPlayersMap m_OfflinePlayers;
+        QueuedPlayersMap m_queuedPlayers;
+        QueuedPlayersMap m_offlinePlayers;
 
         typedef std::map<uint32, LFGGroupQueueInfo> QueuedGroupsMap;
-        QueuedGroupsMap m_QueuedGroups;
+        QueuedGroupsMap m_queuedGroups;
 
         void FindInArea(std::list<ObjectGuid>& players, uint32 area, uint32 team, ObjectGuid const& exclude);
         bool FindRoleToGroup(ObjectGuid playerGuid, Group* group, ClassRoles role);
 
-        uint32 _groupSize = 5;
+        uint32 m_groupSize = 5;
 
         typedef std::map<uint32, MeetingStoneInfo> MeetingStonesMap;
         MeetingStonesMap m_MeetingStonesMap;

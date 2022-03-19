@@ -1593,6 +1593,18 @@ void Player::Update(const uint32 diff)
     if (IsHasDelayedTeleport() && !m_semaphoreTeleport_Near)
         TeleportTo(m_teleport_dest, m_teleport_options);
 
+    // increase visibility of taxi flying characters for others
+    if (IsTaxiFlying() && sWorld.getConfig(CONFIG_BOOL_FAR_VISIBLE_TAXI))
+    {
+        if (!GetVisibilityData().IsVisibilityOverridden())
+            GetVisibilityData().SetVisibilityDistanceOverride(VisibilityDistanceType::Gigantic);
+    }
+    else
+    {
+        if (GetVisibilityData().IsVisibilityOverridden())
+            GetVisibilityData().SetVisibilityDistanceOverride(VisibilityDistanceType::Normal);
+    }
+
 #ifdef BUILD_PLAYERBOT
     if (m_playerbotAI)
         m_playerbotAI->UpdateAI(diff);
@@ -2596,11 +2608,11 @@ void Player::UninviteFromGroup()
     }
 }
 
-void Player::RemoveFromGroup(Group* group, ObjectGuid guid)
+void Player::RemoveFromGroup(Group* group, ObjectGuid guid, uint8 method)
 {
     if (group)
     {
-        if (group->RemoveMember(guid, 0) <= 1)
+        if (group->RemoveMember(guid, method) <= 1)
         {
             // group->Disband(); already disbanded in RemoveMember
             sObjectMgr.RemoveGroup(group);
@@ -5585,8 +5597,7 @@ void Player::UpdateSkillsForLevel(bool maximize/* = false*/)
         if (!pSkill)
             continue;
 
-        SkillRangeType skillType = GetSkillRangeType(pSkill, false);
-        if (skillType != SKILL_RANGE_LEVEL && skillType != SKILL_RANGE_MONO)
+        if (GetSkillRangeType(pSkill, false) != SKILL_RANGE_LEVEL)
             continue;
 
         bool maxed = maximize;

@@ -374,6 +374,9 @@ bool Group::AddMember(ObjectGuid guid, const char* name, uint8 joinMethod)
             WorldPacket groupDataPacket = groupData.BuildPacket(0, false);
             player->SendDirectMessage(groupDataPacket);
         }
+
+        if (sLFGMgr.IsPlayerInQueue(player->GetObjectGuid()))
+            sLFGMgr.RemovePlayerFromQueue(player->GetObjectGuid());
         
         if (isInLFG())
         {
@@ -435,9 +438,12 @@ uint32 Group::RemoveMember(ObjectGuid guid, uint8 method)
             {
                 player->GetSession()->SendMeetingstoneSetqueue(0, MEETINGSTONE_STATUS_NONE);
 
-                data.Initialize(SMSG_MEETINGSTONE_SETQUEUE, 5);
-                data << m_LFGAreaId << uint8(MEETINGSTONE_STATUS_PARTY_MEMBER_LEFT_LFG);
-                BroadcastPacket(data, true);
+                if (!leaderChanged)
+                {
+                    data.Initialize(SMSG_MEETINGSTONE_SETQUEUE, 5);
+                    data << m_LFGAreaId << uint8(MEETINGSTONE_STATUS_PARTY_MEMBER_LEFT_LFG);
+                    BroadcastPacket(data, true);
+                }
             }
 
             // we already removed player from group and in player->GetGroup() is his original group!
@@ -548,17 +554,18 @@ void Group::Disband(bool hideDestroy)
 
             if (isInLFG())
             {
-                sLFGMgr.RemoveGroupFromQueue(m_Id);
-
-                data.Initialize(SMSG_MEETINGSTONE_SETQUEUE, 5);
-                data << 0 << MEETINGSTONE_STATUS_NONE;
-
-                player->GetSession()->SendPacket(data);
+                player->GetSession()->SendMeetingstoneSetqueue(0, MEETINGSTONE_STATUS_NONE);
             }
         }
 
         _homebindIfInstance(player);
     }
+
+    if (isInLFG())
+    {
+        sLFGMgr.RemoveGroupFromQueue(m_Id);
+    }
+
     m_memberSlots.clear();
 
     RemoveAllInvites();
@@ -1647,7 +1654,7 @@ bool Group::FillPremadeLFG(ObjectGuid const& plrGuid, Classes playerClass, Class
     uint32& DpsCount, std::list<ObjectGuid>& processed)
 {
     // We grant the role unless someone else in the group has higher priority for it
-    RolesPriority priority = LFGQueue::getPriority(playerClass, requiredRole);
+    RolesPriority priority = LFGQueue::GetPriority(playerClass, requiredRole);
 
     for (const auto& citr : GetMemberSlots())
     {
@@ -1661,7 +1668,7 @@ bool Group::FillPremadeLFG(ObjectGuid const& plrGuid, Classes playerClass, Class
         Classes memberClass = (Classes)sObjectMgr.GetPlayerClassByGUID(citr.guid);
 
         // Someone else has higher prio
-        if (priority < LFGQueue::getPriority(memberClass, requiredRole))
+        if (priority < LFGQueue::GetPriority(memberClass, requiredRole))
             return false;
     }
 

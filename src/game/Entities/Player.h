@@ -1580,8 +1580,8 @@ class Player : public Unit
             return player == this || (GetGroup() != NULL && GetGroup() == player->GetGroup());
         }
         void UninviteFromGroup();
-        static void RemoveFromGroup(Group* group, ObjectGuid guid);
-        void RemoveFromGroup() { RemoveFromGroup(GetGroup(), GetObjectGuid()); }
+        static void RemoveFromGroup(Group* group, ObjectGuid guid, uint8 method = GROUP_LEAVE);
+        void RemoveFromGroup(uint8 method = GROUP_LEAVE) { RemoveFromGroup(GetGroup(), GetObjectGuid(), method); }
         void SendUpdateToOutOfRangeGroupMembers();
 
         void SetInGuild(uint32 GuildId) { SetUInt32Value(PLAYER_GUILDID, GuildId); }
