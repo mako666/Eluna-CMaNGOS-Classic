@@ -466,7 +466,7 @@ void BattleGroundAV::ProcessPlayerDestroyedPoint(AVNodeIds node)
     Team ownerTeam = GetTeamIdByTeamIndex(ownerTeamIdx);
 
     bool isTower = m_nodes[node].graveyardId == 0;
-    uint32 newState = 0;
+    uint32 newState = ownerTeam == ALLIANCE ? avNodeWorldStates[node].worldStateAlly : avNodeWorldStates[node].worldStateHorde;
 
     // despawn banner
     DestroyNode(node);

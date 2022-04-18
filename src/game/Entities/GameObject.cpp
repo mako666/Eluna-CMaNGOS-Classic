@@ -1465,16 +1465,13 @@ void GameObject::Use(Unit* user, SpellEntry const* spellInfo)
             if (!GetGOInfo()->chest.lockId)
                 SetLootState(GO_JUST_DEACTIVATED);
 
-            if (GetFaction())
-            {
-                UnitList targets;
-                MaNGOS::AnyFriendlyUnitInObjectRangeCheck check(this, nullptr, 5.f);
-                MaNGOS::UnitListSearcher<MaNGOS::AnyFriendlyUnitInObjectRangeCheck> searcher(targets, check);
-                Cell::VisitAllObjects(this, searcher, 5.f);
-                for (Unit* attacker : targets)
-                    if (attacker->AI())
-                        attacker->AI()->AttackStart(user);
-            }
+            UnitList targets;
+            MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck check(user, 5.f);
+            MaNGOS::UnitListSearcher<MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck> searcher(targets, check);
+            Cell::VisitAllObjects(this, searcher, 5.f);
+            for (Unit* attacker : targets)
+                if (attacker->AI())
+                    attacker->AI()->AttackStart(user);
 
             return;
         }
@@ -2648,6 +2645,14 @@ void GameObject::ForcedDespawn(uint32 timeMSToDespawn)
 
     SetForcedDespawn();
     SetLootState(GO_JUST_DEACTIVATED);
+
+    // some GOs have respawn time not filled to prevent despawn on action - need to override that this time
+    if (!m_respawnDelay && GetDbGuid() && !m_respawnOverriden)
+    {
+        // only static spawns should arrive here
+        if (GameObjectData const* data = sObjectMgr.GetGOData(GetDbGuid()))
+            SetRespawnDelay(data->GetRandomRespawnTime(), true);
+    }
 }
 
 bool ForcedDespawnDelayGameObjectEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)

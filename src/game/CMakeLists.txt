@@ -105,7 +105,7 @@ target_link_libraries(${LIBRARY_NAME}
   PRIVATE g3dlite
   PRIVATE detour
   PRIVATE lualib
-  PRIVATE ${ZLIB_LIBRARIES}
+  PRIVATE zlib
 )
 
 # include additionals headers

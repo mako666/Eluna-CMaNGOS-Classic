@@ -34,6 +34,7 @@ INSERT INTO scripted_areatrigger VALUES
 (2046,'at_blackrock_spire'),
 (2066,'at_blackrock_spire'),
 (2067,'at_blackrock_spire'),
+(2746,'at_stormwind_recruiter'),
 (3066,'at_ravenholdt'),
 (3146,'at_hive_tower'),
 -- Darnassian bank
@@ -88,6 +89,12 @@ UPDATE gameobject_template SET ScriptName='go_elemental_rift' WHERE entry IN (17
 UPDATE gameobject_template SET ScriptName='go_dragon_head' WHERE entry IN(179556,179558,179881,179882);
 UPDATE gameobject_template SET ScriptName='go_unadorned_spike' WHERE entry IN(175787);
 UPDATE gameobject_template SET ScriptName='go_containment_coffer' WHERE entry=122088;
+
+/* Outdoor PVP*/
+-- si
+UPDATE gameobject_template SET ScriptName='go_outdoor_pvp_notify' WHERE entry IN(181597,181598);
+-- ep
+UPDATE gameobject_template SET ScriptName='go_outdoor_pvp_notify' WHERE entry IN(181682,181955);
 
 /* GUARD */
 UPDATE creature_template SET ScriptName='guard_orgrimmar' WHERE entry=3296;
